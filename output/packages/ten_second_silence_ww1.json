@@ -1,0 +1,164 @@
+{
+  "story_id": "ten_second_silence_ww1",
+  "meta": {
+    "title_options": [
+      "The 10 Seconds That Ended World War One",
+      "Why WWI Ended in Total Silence",
+      "The Eerie 10-Second Pause That Stopped the Great War",
+      "November 11th: The Silence That Changed Everything",
+      "The Moment 20 Million Deaths Went Silent"
+    ],
+    "thumbnail_prompt": "Wide cinematic shot of a muddy WWI trench at dawn, November 11 1918, soldiers frozen mid-movement staring at pocket watches showing 11:00, golden light breaking through heavy mist, faces showing disbelief and exhaustion, Dutch angle composition, muted desaturated colors with warm highlights, cinematic lighting",
+    "description": "At 11:00 AM on November 11, 1918, the guns fell silent. But in the ten seconds before the armistice took effect, something extraordinary happened along the Western Front—a moment of collective human awareness that 1,568 days of industrial slaughter were about to end.\n\nThis is the story of the most surreal ten-count in history, when soldiers on both sides knew the exact second their war would stop, and the haunting decisions made in those final moments.\n\nSubscribe to Toledot Stories for history that hits different.",
+    "tags": [
+      "World War One",
+      "WWI armistice",
+      "November 11 1918",
+      "World War 1 ending",
+      "armistice day",
+      "Western Front",
+      "Great War",
+      "WWI history",
+      "World War One facts",
+      "history documentary",
+      "untold history",
+      "historical moments",
+      "war history",
+      "military history",
+      "1918",
+      "trench warfare",
+      "WWI soldiers",
+      "armistice silence",
+      "eleventh hour",
+      "Treaty of Versailles",
+      "Ferdinand Foch",
+      "WWI veterans",
+      "Great War armistice",
+      "historical mysteries",
+      "war ending moments",
+      "WWI final hours",
+      "Toledot Stories",
+      "history channel",
+      "history explained",
+      "WWI documentary",
+      "first world war",
+      "war armistice",
+      "historical silence",
+      "November 1918",
+      "WWI end",
+      "armistice agreement",
+      "cessation of hostilities",
+      "WWI timeline",
+      "historical countdown",
+      "war veterans",
+      "military armistice",
+      "WWI facts you didn't know",
+      "forgotten history",
+      "history stories",
+      "world history",
+      "European history",
+      "twentieth century history",
+      "modern history",
+      "war and peace",
+      "historical turning points",
+      "defining moments"
+    ],
+    "hashtags": [
+      "#WWI",
+      "#WorldWarOne",
+      "#ArmisticeDay",
+      "#History",
+      "#WarHistory",
+      "#November11",
+      "#GreatWar",
+      "#MilitaryHistory",
+      "#HistoricalMoments",
+      "#UntoldHistory",
+      "#ToledotStories",
+      "#HistoryShorts"
+    ],
+    "chapters": [
+      {
+        "time": "0:00",
+        "label": "The Ten-Second Countdown"
+      },
+      {
+        "time": "0:12",
+        "label": "Surreal Awareness"
+      },
+      {
+        "time": "0:24",
+        "label": "The Silence Falls"
+      }
+    ],
+    "pinned_comment": "If you knew the exact second a war would end, what would you do in those final ten seconds?",
+    "captions": {
+      "youtube_shorts": "At 11 AM on November 11, 1918, WWI ended in total silence. But the ten seconds before that moment? Soldiers on both sides counted down to peace, knowing the exact second 1,568 days of slaughter would stop.\n\nThe most surreal countdown in history. 🕰️\n\n#WWI #ArmisticeDay #History #WorldWarOne #WarHistory #HistoricalMoments #ToledotStories #HistoryShorts #November11 #GreatWar #UntoldHistory #MilitaryHistory",
+      "tiktok": "November 11, 1918, 11:00 AM. The moment WWI ended—but soldiers counted down the final ten seconds, watching their clocks, knowing the exact moment peace would arrive.\n\nThe strangest countdown in history. What would YOU do? 🕰️💔",
+      "instagram": "11:00 AM. November 11, 1918. WWI soldiers counted down the final ten seconds to peace, watching their pocket watches tick toward the armistice.\n\nAfter 1,568 days of industrial slaughter, they knew the exact second it would all stop. The most surreal countdown in human history. 🕰️",
+      "twitter": "November 11, 1918, 11:00 AM: WWI soldiers counted down the final 10 seconds to peace, watching their clocks. After 1,568 days of war, they knew the exact moment it would end. The strangest countdown in history."
+    }
+  },
+  "narration": {
+    "full_text": "November 11th, 1918. A German machine gunner in the Argonne Forest checks his watch. 10:59:50. Ten seconds until the armistice. He knows the exact moment his war ends—down to the second. This is perhaps the most surreal awareness in military history. For four years, death arrived randomly. Now it operates on a strict timetable. At 11:00 and zero seconds, the guns go silent. Not gradually. Instantly. The sudden absence of sound is so profound that men report hearing birds for the first time in years.",
+    "voice_id": "21m00Tcm4TlvDq8ikWAM",
+    "estimated_duration_sec": 30
+  },
+  "segments": [
+    {
+      "index": 0,
+      "narration_text": "November 11th, 1918. A German machine gunner in the Argonne Forest checks his watch. 10:59:50.",
+      "duration_sec": 6,
+      "grok_prompt": "Close-up cinematic shot of weathered hands holding a German military pocket watch showing 10:59:50, November 1918, muddy trench background out of focus, cold morning light, fingers trembling slightly, scratched watch face, period-accurate Doxa or IWC timepiece, shallow depth of field, muted colors with metallic watch details sharp",
+      "visual_style": "close",
+      "motion": "slow_zoom_in",
+      "transition_in": "cut",
+      "overlay": {
+        "type": "date",
+        "text": "November 11, 1918\n10:59:50 AM",
+        "appears_at_sec": 2
+      }
+    },
+    {
+      "index": 1,
+      "narration_text": "Ten seconds until the armistice. He knows the exact moment his war ends—down to the second.",
+      "duration_sec": 6,
+      "grok_prompt": "Medium shot of young German soldier in field-grey uniform leaning against trench wall, eyes fixed on pocket watch in his hands, expression of disbelief and exhaustion, morning fog rolling through Argonne Forest background, other soldiers visible in soft focus doing the same gesture, golden hour lighting, desaturated period film aesthetic",
+      "visual_style": "medium",
+      "motion": "static",
+      "transition_in": "dissolve"
+    },
+    {
+      "index": 2,
+      "narration_text": "This is perhaps the most surreal awareness in military history. For four years, death arrived randomly. Now it operates on a strict timetable.",
+      "duration_sec": 6,
+      "grok_prompt": "Wide aerial shot of Western Front trenches stretching to horizon, November 1918 dawn, both Allied and German positions visible, soldiers emerging from dugouts checking watches in synchronized motion, no man's land between them scarred and cratered, mist hanging low, god-ray lighting through clouds, cinematic scale, crane shot descending",
+      "visual_style": "aerial",
+      "motion": "slow_pan",
+      "transition_in": "cut"
+    },
+    {
+      "index": 3,
+      "narration_text": "At 11:00 and zero seconds, the guns go silent. Not gradually. Instantly.",
+      "duration_sec": 6,
+      "grok_prompt": "Macro shot of artillery piece barrel at moment of stillness, smoke still wisping from muzzle, French 75mm field gun, frozen raindrop on metal surface catching light, background completely out of focus showing blurred forms of artillery crew standing motionless, cold blue-grey morning light, extreme shallow depth of field, moment of transition",
+      "visual_style": "macro",
+      "motion": "static",
+      "transition_in": "cut",
+      "overlay": {
+        "type": "stat",
+        "text": "11:00:00 AM",
+        "appears_at_sec": 1
+      }
+    },
+    {
+      "index": 4,
+      "narration_text": "The sudden absence of sound is so profound that men report hearing birds for the first time in years.",
+      "duration_sec": 6,
+      "grok_prompt": "Wide shot of scarred battlefield at 11:01 AM, soldiers from both sides slowly emerging from trenches standing upright for first time in months, arms at sides, looking at sky, small bird visible in foreground on broken tree branch, golden light breaking through dissipating gun smoke, faces showing shock and confusion, complete stillness, cinematic composition",
+      "visual_style": "wide",
+      "motion": "slow_zoom_out",
+      "transition_in": "fade"
+    }
+  ]
+}
