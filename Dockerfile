@@ -24,6 +24,14 @@ RUN pip install --no-cache-dir "huggingface_hub[cli]" && \
     huggingface-cli download Lightricks/LTX-Video \
         --local-dir /root/.cache/ltx-video \
         --local-dir-use-symlinks False \
+        --include "ltx-video-2b-v0.9.5.safetensors" \
+        --include "*.json" \
+        --include "*.txt" \
+        --include "tokenizer/*" \
+        --include "scheduler/*" \
+        --include "text_encoder/*" \
+        --include "vae/*" \
+        --include "transformer/*" \
     && echo "LTX-Video weights downloaded."
 
 WORKDIR /workspace
