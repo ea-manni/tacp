@@ -1,0 +1,199 @@
+{
+  "story_id": "ten_second_silence_armistice_1918",
+  "meta": {
+    "title_options": [
+      "The 10 Seconds That Ended The War",
+      "Why WWI Ended With 10 Seconds of Silence",
+      "The Strangest Moment of 1918: 10 Seconds That Changed Everything",
+      "10 Seconds of Silence Ended 4 Years of Screaming",
+      "The Final Sound of World War One Was No Sound At All"
+    ],
+    "thumbnail_prompt": "A cinematic wide shot of a muddy Western Front trench at dawn, November 11, 1918. Silhouetted soldiers stand motionless with rifles lowered, facing no man's land. Thick fog rolls across barbed wire and shell craters. Golden morning light breaks through gray clouds. The atmosphere is surreal and suspended—exhaustion, disbelief, and eerie calm. No text, hyper-realistic, muted earthy tones.",
+    "description": "November 11, 1918, 11:00 AM. After four years of industrial slaughter, the guns of World War One fell silent. But the moment didn't arrive with cheers or celebration—it came with ten seconds of profound, unnatural quiet that soldiers would remember for the rest of their lives.\n\nThis is the story of the Armistice: the bizarre final hours when men kept dying for ground that would be surrendered at lunch, the artillery barrage that crescendoed right up to 10:59, and the silence that followed—a sound so foreign after years of constant bombardment that some soldiers thought they'd gone deaf.\n\nSubscribe for more untold history that hits different. What moment in history do you think deserves more attention? Drop it in the comments.",
+    "tags": [
+      "World War One",
+      "WWI Armistice",
+      "November 11 1918",
+      "Armistice Day",
+      "Western Front",
+      "end of World War One",
+      "WWI history",
+      "Great War",
+      "trench warfare",
+      "1918",
+      "World War One facts",
+      "military history",
+      "war history",
+      "historical moments",
+      "forgotten history",
+      "WWI soldiers",
+      "Armistice silence",
+      "eleventh hour",
+      "Treaty of Versailles",
+      "Ferdinand Foch",
+      "Compiègne",
+      "last day of WWI",
+      "WWI stories",
+      "battlefield silence",
+      "historical storytelling",
+      "world history",
+      "European history",
+      "war and peace",
+      "1910s history",
+      "military armistice",
+      "ceasefire",
+      "end of war",
+      "historical narrative",
+      "untold history",
+      "history documentary",
+      "WWI documentary",
+      "short history",
+      "history explained",
+      "cinematic history",
+      "war stories",
+      "veteran stories",
+      "historical facts",
+      "history education",
+      "learn history",
+      "history channel",
+      "WWI centennial",
+      "Remembrance Day",
+      "Veterans Day",
+      "poppy day",
+      "war memory",
+      "historical memory"
+    ],
+    "hashtags": [
+      "#WWI",
+      "#WorldWarOne",
+      "#ArmisticeDay",
+      "#History",
+      "#MilitaryHistory",
+      "#WarHistory",
+      "#GreatWar",
+      "#November11",
+      "#HistoricalFacts",
+      "#UntoldHistory",
+      "#RemembranceDay",
+      "#VeteransDay"
+    ],
+    "chapters": [
+      {
+        "time": "0:00",
+        "label": "The Signature"
+      },
+      {
+        "time": "0:12",
+        "label": "The Final Hours"
+      },
+      {
+        "time": "0:24",
+        "label": "10:59 AM"
+      },
+      {
+        "time": "0:36",
+        "label": "The Silence"
+      },
+      {
+        "time": "0:48",
+        "label": "What It Meant"
+      }
+    ],
+    "pinned_comment": "Over 2,700 soldiers died on November 11, 1918—after the Armistice was signed but before it took effect at 11 AM. Commanders kept attacking for territory they knew they'd have to give back hours later. Would you have followed that order?",
+    "captions": {
+      "youtube_shorts": "November 11, 1918, 11:00 AM. After 4 years of hell, WWI ended with 10 seconds of silence so profound soldiers thought they'd gone deaf. This is the story of the strangest moment in modern war.\n\n👉 Follow for history that hits different\n\n#WWI #WorldWarOne #ArmisticeDay #History #MilitaryHistory #WarHistory #GreatWar #HistoricalFacts #UntoldHistory #RemembranceDay #VeteransDay #Shorts",
+      "tiktok": "November 11, 1918. The guns finally stopped—but the silence that followed was more terrifying than the bombardment. Soldiers stood frozen, unsure if it was real. This is how WWI actually ended.\n\n#WWI #History #ArmisticeDay #MilitaryHistory #LearnOnTikTok #HistoryTok #WarHistory #GreatWar #HistoricalFacts #UntoldHistory",
+      "instagram": "After four years of constant artillery fire, World War One ended at exactly 11:00 AM on November 11, 1918. But it didn't end with cheers—it ended with ten seconds of silence so unnatural that soldiers thought something was wrong with their ears.\n\nThis is the story of the Armistice, the bizarre final hours, and the sound of peace. Follow @toledotstories for history that rewrites what you thought you knew.\n\n#WWI #WorldWarOne #ArmisticeDay #History #MilitaryHistory #WarHistory #GreatWar #RemembranceDay #HistoricalStorytelling #UntoldHistory",
+      "twitter": "November 11, 1918, 11:00 AM. After 4 years of industrial slaughter, WWI ended with 10 seconds of silence so profound soldiers thought they'd gone deaf. The strangest moment in modern war."
+    }
+  },
+  "narration": {
+    "full_text": "At 5 AM on November 11, 1918, German delegates signed the Armistice in a railway car in Compiègne. The war would end in six hours. But nobody told the guns. Across the Western Front, artillery fire intensified. Commanders ordered final attacks for strategic positions they'd have to surrender by lunch. American Private Henry Gunther charged a German roadblock at 10:59 AM. He was cut down. The last man killed in World War One. One minute later, every gun on the front fell silent simultaneously. The silence lasted ten seconds. Then the sound of birds. Soldiers later said it was the most disturbing moment of the war—not the explosions, but their absence. Some thought they'd gone deaf. After four years of constant bombardment, their ears couldn't process peace. The silence wasn't an ending. It was a question the century spent trying to answer.",
+    "voice_id": "21m00Tcm4TlvDq8ikWAM",
+    "estimated_duration_sec": 48
+  },
+  "segments": [
+    {
+      "index": 0,
+      "narration_text": "At 5 AM on November 11, 1918, German delegates signed the Armistice in a railway car in Compiègne.",
+      "duration_sec": 6,
+      "grok_prompt": "Interior of a dim railway carriage at dawn, November 1918. German military officers in field-gray uniforms sit across from Allied commanders at a wooden table covered with documents. Flickering oil lamps cast shadows. Exhausted faces, no celebration. Cinematic composition through train window showing misty French forest outside. Muted colors, somber mood, period-accurate details.",
+      "visual_style": "medium",
+      "motion": "slow_pan",
+      "transition_in": "cut",
+      "overlay": {
+        "type": "date",
+        "text": "5:00 AM, Nov 11, 1918",
+        "appears_at_sec": 2
+      }
+    },
+    {
+      "index": 1,
+      "narration_text": "The war would end in six hours. But nobody told the guns.",
+      "duration_sec": 6,
+      "grok_prompt": "Wide shot of Western Front battlefield at dawn, November 1918. Artillery pieces firing in rapid succession along a muddy trench line. Massive muzzle flashes illuminating fog. Shell craters and barbed wire stretching to horizon. Silhouettes of soldiers moving between positions. Smoke and chaos continuing despite the signed armistice. Gritty realism, desaturated palette, kinetic energy.",
+      "visual_style": "wide",
+      "motion": "tracking",
+      "transition_in": "cut"
+    },
+    {
+      "index": 2,
+      "narration_text": "Across the Western Front, artillery fire intensified. Commanders ordered final attacks for strategic positions they'd have to surrender by lunch.",
+      "duration_sec": 6,
+      "grok_prompt": "Close-up of a military officer shouting orders in a trench command post. Maps with marked positions on wooden table, candles flickering. Behind him through the dugout entrance, explosions light up the pre-dawn sky. His face is conflicted—determination mixed with futility. Muddy uniform, iron cross visible. Cinematic lighting, shallow depth of field, tense atmosphere.",
+      "visual_style": "close",
+      "motion": "static",
+      "transition_in": "cut"
+    },
+    {
+      "index": 3,
+      "narration_text": "American Private Henry Gunther charged a German roadblock at 10:59 AM. He was cut down. The last man killed in World War One.",
+      "duration_sec": 6,
+      "grok_prompt": "Medium shot of a lone American soldier in doughboy uniform running across no man's land toward a German machine gun position. Frozen mid-stride, mouth open in a yell. Mud splashing beneath boots. German soldiers visible in distant sandbag position, rifles raised. The moment suspended before tragedy. Dramatic side lighting, motion blur, 10:59 AM November light.",
+      "visual_style": "medium",
+      "motion": "zoom_in",
+      "transition_in": "cut",
+      "overlay": {
+        "type": "name",
+        "text": "Pvt. Henry Gunther",
+        "appears_at_sec": 1
+      }
+    },
+    {
+      "index": 4,
+      "narration_text": "One minute later, every gun on the front fell silent simultaneously. The silence lasted ten seconds.",
+      "duration_sec": 6,
+      "grok_prompt": "Aerial view of the Western Front at 11:00 AM. Miles of trenches, shell craters, and devastated landscape stretching across the frame. Smoke rising from recent artillery. Then absolute stillness—no muzzle flashes, no movement. The frozen tableau of war interrupted. Muted colors, high contrast, eerie calm descending over chaos. God's-eye perspective.",
+      "visual_style": "aerial",
+      "motion": "slow_pan",
+      "transition_in": "fade"
+    },
+    {
+      "index": 5,
+      "narration_text": "Then the sound of birds. Soldiers later said it was the most disturbing moment of the war—not the explosions, but their absence.",
+      "duration_sec": 6,
+      "grok_prompt": "Close-up of a soldier's weathered face in profile, standing in a trench. His eyes are wide, disoriented, looking up toward the sky. Morning light breaking through dissipating smoke. A small bird perched on barbed wire in soft focus background. His expression shows confusion, not relief. Stubble, mud-caked uniform, haunted eyes. Intimate framing, natural light, vulnerable moment.",
+      "visual_style": "close",
+      "motion": "static",
+      "transition_in": "cut"
+    },
+    {
+      "index": 6,
+      "narration_text": "Some thought they'd gone deaf. After four years of constant bombardment, their ears couldn't process peace.",
+      "duration_sec": 6,
+      "grok_prompt": "Medium shot of a group of soldiers in a trench, hands touching their ears, looking at each other with bewildered expressions. Some sitting on sandbags, others standing. Rifles lowered. No one speaks. Smoke clearing behind them reveals a still battlefield. The body language is confusion and disorientation, not celebration. Naturalistic lighting, muted earth tones, psychological tension.",
+      "visual_style": "medium",
+      "motion": "slow_pan",
+      "transition_in": "cut"
+    },
+    {
+      "index": 7,
+      "narration_text": "The silence wasn't an ending. It was a question the century spent trying to answer.",
+      "duration_sec": 6,
+      "grok_prompt": "Wide shot of empty no man's land at midday, November 11, 1918. Barbed wire, shell craters filled with water, broken trees, abandoned equipment scattered across mud. Overcast sky. No soldiers visible—just the devastated landscape. The stillness feels temporary, ominous. This ground will be fought over again. Cinematic composition, desaturated colors, haunting emptiness, ambiguous ending.",
+      "visual_style": "wide",
+      "motion": "zoom_out",
+      "transition_in": "fade"
+    }
+  ]
+}
