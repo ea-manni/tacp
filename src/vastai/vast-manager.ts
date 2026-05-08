@@ -143,7 +143,7 @@ ${startupScript}`;
 // ── Wait for ready ────────────────────────────────────────────────────────────
 export async function waitForReady(instanceId: number): Promise<VastInstance> {
   console.log("   ⏳ Waiting for instance to be ready...");
-  console.log("   (This takes 8–12 min for first-time model download)");
+  console.log("   (Pulling pre-built Docker image — should be ready in 2–3 min)");
 
   const start = Date.now();
 

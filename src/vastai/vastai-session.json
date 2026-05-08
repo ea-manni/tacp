@@ -1,6 +1,7 @@
 {
-  "id": 36280295,
-  "host": "74.48.140.178",
-  "port": 65535,
-  "baseUrl": "http://74.48.140.178:65535"
+  "id": 36309703,
+  "host": "ssh2.vast.ai",
+  "port": 29702,
+  "baseUrl": "http://localhost:8080",
+  "sshTunnel": true
 }

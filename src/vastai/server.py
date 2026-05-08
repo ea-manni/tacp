@@ -60,6 +60,7 @@ def generate(req: ClipRequest):
     if not os.path.exists(output_path):
         raise HTTPException(status_code=500, detail="Output file not created")
 
+    torch.cuda.empty_cache()
     return {"clip_id": clip_id, "path": output_path}
 
 @app.get("/download/{clip_id}")
