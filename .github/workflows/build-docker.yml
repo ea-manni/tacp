@@ -1,11 +1,18 @@
 name: Build and Push TACP Docker Image
 
 on:
-  workflow_dispatch:  # manual trigger only
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'src/vastai/server.py'
+      - '.github/workflows/build-docker.yml'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
