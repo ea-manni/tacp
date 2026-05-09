@@ -51,10 +51,23 @@ async function vastRequest(method: string, endpoint: string, body?: any): Promis
 export async function findBestOffer(): Promise<number> {
   console.log("   🔍 Searching for best GPU offer...");
 
+  const apiKey = process.env.VASTAI_API_KEY;
+  if (!apiKey) throw new Error("VASTAI_API_KEY not set in .env");
+
+  // Accepted GPU shortlist — all have 20GB+ VRAM, fast enough for LTX distilled
+  const ACCEPTED_GPUS = [
+    "RTX 4090",
+    "RTX 4080 SUPER",
+    "RTX 4080",
+    "L40S",
+    "L40",
+    "H100",
+  ];
+
   const res = await fetch(`${VAST_API}/bundles/`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.VASTAI_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -64,11 +77,11 @@ export async function findBestOffer(): Promise<number> {
       rentable: { eq: true },
       rented: { eq: false },
       num_gpus: { eq: 1 },
-      gpu_ram: { gte: 16000 },       // 16GB VRAM minimum
-      reliability2: { gte: 0.97 },   // 97%+ reliability
-      cuda_max_good: { gte: 12.0 },  // CUDA 12+
-      disk_space: { gte: 50 },       // 50GB+ disk
-      order: [["dph_total", "asc"]], // cheapest first
+      gpu_ram: { gte: 20000 },
+      reliability2: { gte: 0.95 },
+      cuda_max_good: { gte: 12.0 },
+      disk_space: { gte: 50 },
+      order: [["dph_total", "asc"]],
     }),
   });
 
@@ -80,18 +93,19 @@ export async function findBestOffer(): Promise<number> {
     throw new Error("No GPU offers found — try again in a few minutes");
   }
 
-  // Client-side double validation — never trust API alone
+  // Client-side filter — only accept GPUs from our shortlist
   const valid = data.offers.filter((o: any) =>
-    o.gpu_ram >= 16000 &&
+    o.gpu_ram >= 20000 &&
     o.disk_space >= 50 &&
-    o.reliability2 >= 0.97 &&
+    o.reliability2 >= 0.95 &&
     o.cuda_max_good >= 12.0 &&
     o.rentable === true &&
-    o.rented === false
+    o.rented === false &&
+    ACCEPTED_GPUS.some((name) => o.gpu_name?.includes(name))
   );
 
   if (valid.length === 0) {
-    throw new Error("No offers passed validation — try again in a few minutes");
+    throw new Error("No accepted GPUs available right now — try again in a few minutes");
   }
 
   const best = valid[0];
