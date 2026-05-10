@@ -7,45 +7,44 @@ ENV HF_HUB_ENABLE_HF_TRANSFER=1
 
 RUN apt-get update && apt-get install -y git ffmpeg && rm -rf /var/lib/apt/lists/*
 
+# Install latest diffusers from git for LTX 0.9.7 support, plus runtime deps
 RUN pip install --no-cache-dir \
     fastapi==0.111.0 \
     uvicorn==0.30.0 \
-    diffusers==0.32.2 \
     transformers==4.44.2 \
     accelerate==0.33.0 \
     sentencepiece==0.2.0 \
     imageio==2.34.2 \
     imageio-ffmpeg==0.5.1 \
-    "huggingface_hub[cli,hf_transfer]==0.24.5"
+    ftfy==6.2.0 \
+    "huggingface_hub[cli,hf_transfer]==0.24.5" \
+    git+https://github.com/huggingface/diffusers@main
 
-# Pipeline config files (small, fast)
-RUN huggingface-cli download Lightricks/LTX-Video model_index.json \
-    --local-dir /root/.cache/ltx-video
+# Pre-download LTX-Video 0.9.7-dev (13B) — base model only, no upscaler
+# Each component in its own RUN layer so Docker caches granularly
+RUN huggingface-cli download Lightricks/LTX-Video-0.9.7-dev model_index.json \
+    --local-dir /root/.cache/ltx-video-0.9.7-dev
 
-RUN huggingface-cli download Lightricks/LTX-Video \
-    --local-dir /root/.cache/ltx-video \
+RUN huggingface-cli download Lightricks/LTX-Video-0.9.7-dev \
+    --local-dir /root/.cache/ltx-video-0.9.7-dev \
     --include "scheduler/*"
 
-RUN huggingface-cli download Lightricks/LTX-Video \
-    --local-dir /root/.cache/ltx-video \
+RUN huggingface-cli download Lightricks/LTX-Video-0.9.7-dev \
+    --local-dir /root/.cache/ltx-video-0.9.7-dev \
     --include "tokenizer/*"
 
-RUN huggingface-cli download Lightricks/LTX-Video \
-    --local-dir /root/.cache/ltx-video \
-    --include "transformer/*.json"
-
-RUN huggingface-cli download Lightricks/LTX-Video \
-    --local-dir /root/.cache/ltx-video \
-    --include "vae/*"
-
-RUN huggingface-cli download Lightricks/LTX-Video \
-    --local-dir /root/.cache/ltx-video \
+RUN huggingface-cli download Lightricks/LTX-Video-0.9.7-dev \
+    --local-dir /root/.cache/ltx-video-0.9.7-dev \
     --include "text_encoder/*"
 
-# FP8 distilled transformer (~4.5GB) — the only weight file we actually load
-RUN huggingface-cli download Lightricks/LTX-Video \
-    ltxv-2b-0.9.8-distilled-fp8.safetensors \
-    --local-dir /root/.cache/ltx-video
+RUN huggingface-cli download Lightricks/LTX-Video-0.9.7-dev \
+    --local-dir /root/.cache/ltx-video-0.9.7-dev \
+    --include "vae/*"
+
+# Transformer is sharded — must include all .safetensors and the index json
+RUN huggingface-cli download Lightricks/LTX-Video-0.9.7-dev \
+    --local-dir /root/.cache/ltx-video-0.9.7-dev \
+    --include "transformer/*"
 
 WORKDIR /workspace
 COPY src/vastai/server.py /workspace/tacp_server.py
