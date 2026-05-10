@@ -107,7 +107,7 @@ if (process.argv[1].endsWith("synthesize.ts")) {
   const pkgPath = process.argv[2];
   if (!pkgPath) {
     console.error(
-      'Usage: npx tsx src/elevenlabs/synthesize.ts "output/packages/<story_id>.json"'
+      'Usage: npx tsx src/tts/synthesize.ts "output/packages/<story_id>.json"'
     );
     process.exit(1);
   }

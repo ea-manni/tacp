@@ -33,7 +33,7 @@ async function startSession() {
   console.log(`   Instance ID: ${instance.id}`);
   console.log(`   Server URL: ${instance.baseUrl}`);
   console.log("\n   Now run:");
-  console.log(`   npx tsx src/grok/generate-clips.ts "output/packages/<story>.json"`);
+  console.log(`   npx tsx src/clips/generate-clips.ts "output/packages/<story>.json"`);
   console.log("\n   When done, destroy the instance:");
   console.log("   npx tsx src/vastai/cleanup.ts");
 }

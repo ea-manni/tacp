@@ -32,7 +32,7 @@ STRICT JSON STRUCTURE — follow this exactly, no deviations:
       "index": 0,
       "narration_text": "...",
       "duration_sec": 6,
-      "grok_prompt": "...",
+      "video_prompt": "...",
       "visual_style": "wide",
       "motion": "slow_pan",
       "transition_in": "cut"
@@ -61,7 +61,7 @@ LENGTH MATH (hard constraints):
 - 8 segments × 6 seconds = 48 seconds.
 
 VISUAL DIRECTION (per segment):
-- grok_prompt: cinematic and specific — composition, lighting, period detail, mood. 6-second shot. No on-screen text, no logos, no copyrighted characters, no modern brands.
+- video_prompt: cinematic and specific — composition, lighting, period detail, mood. 6-second shot. No on-screen text, no logos, no copyrighted characters, no modern brands.
 - Vary visual_style (wide/close/medium/macro/aerial) and motion (static/slow_pan/zoom_in/zoom_out/tracking) — never repeat the same combination twice in a row.
 
 METADATA:

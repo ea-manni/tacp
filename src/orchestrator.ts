@@ -5,8 +5,8 @@
 import * as fs from "fs";
 import * as path from "path";
 import { generatePackage } from "./claude/generate-package.js";
-import { synthesize } from "./elevenlabs/synthesize.js";
-import { generateClips } from "./grok/generate-clips.js";
+import { synthesize } from "./tts/synthesize.js";
+import { generateClips } from "./clips/generate-clips.js";
 import { renderVideo } from "./remotion/render.js";
 import "dotenv/config";
 
@@ -35,8 +35,8 @@ async function run() {
   const audioResult = await synthesize(pkg, storyId);
   console.log(`✅ Audio: ${audioResult.duration_sec.toFixed(1)}s`);
 
-  // Step 3: Generate video clips with Grok
-  console.log("\n[3/4] Grok — Generating video clips...");
+  // Step 3: Generate video clips
+  console.log("\n[3/4] Generating video clips...");
   await generateClips(pkg, storyId);
   console.log(`✅ All clips generated`);
 

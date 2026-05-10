@@ -30,7 +30,8 @@ export interface Segment {
   index: number;
   narration_text: string;
   duration_sec: 6;
-  grok_prompt: string;
+  video_prompt: string;       // canonical going forward
+  grok_prompt?: string;        // legacy alias for older package JSONs
   visual_style: "wide" | "close" | "medium" | "macro" | "aerial";
   motion: "static" | "slow_pan" | "zoom_in" | "zoom_out" | "tracking";
   overlay?: {

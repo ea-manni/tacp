@@ -108,7 +108,7 @@ if (process.argv[1].endsWith("generate-clips.ts")) {
   const pkgPath = process.argv[2];
   if (!pkgPath) {
     console.error(
-      'Usage: npx tsx src/grok/generate-clips.ts "output/packages/<story_id>.json"'
+      'Usage: npx tsx src/clips/generate-clips.ts "output/packages/<story_id>.json"'
     );
     process.exit(1);
   }
