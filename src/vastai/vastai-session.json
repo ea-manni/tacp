@@ -1,0 +1,7 @@
+{
+  "id": 36347532,
+  "host": "ssh1.vast.ai",
+  "port": 27532,
+  "baseUrl": "http://localhost:8080",
+  "sshTunnel": true
+}

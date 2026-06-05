@@ -1,0 +1,8 @@
+node_modules/
+.env
+output/
+public/stills/
+public/audio/
+public/parallax/
+*.pack
+dist/
