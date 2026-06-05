@@ -1,8 +1,8 @@
-import fs from "fs";
-import path from "path";
+import * as fs from "fs";
+import * as path from "path";
 
 const HORDE_API = "https://aihorde.net/api/v2";
-const ANON_KEY = process.env.HORDE_API_KEY;
+const ANON_KEY = process.env.HORDE_API_KEY ?? "0000000000";
 const CLIENT = "TACP:1.0:toledotstories";
 
 function sleep(ms: number): Promise<void> {
@@ -26,10 +26,6 @@ async function submitJob(prompt: string): Promise<string> {
         cfg_scale: 7,
         n: 1,
         sampler_name: "k_euler_a",
-        // TODO: upgrade to 832x1216 after registering at stablehorde.net
-        // width: 832,
-        // height: 1216,
-        // steps: 25,
       },
       r2: false,
       shared: false,
@@ -91,12 +87,12 @@ export async function generateStill(
 
   const b64 = await fetchResult(jobId);
 
-  const dir = path.join("public", "stills", storyId);
+  const dir = path.join("output", "stills", storyId);
   fs.mkdirSync(dir, { recursive: true });
 
   const filePath = path.join(dir, `${segmentIndex}.jpg`);
   fs.writeFileSync(filePath, Buffer.from(b64, "base64"));
 
-  console.log(`[imageGen] Saved → ${filePath}`);
+  console.log(`[imageGen] Saved -> ${filePath}`);
   return filePath;
 }

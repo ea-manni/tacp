@@ -49,7 +49,7 @@ export async function synthesize(
 
   const { voice_name, tone_instruction } = await selectVoice(pkg);
 
-  const promptedText = `${tone_instruction}\n\n${pkg.narration.full_text}`;
+  const promptedText = pkg.narration.full_text;
 
   console.log("   Calling Gemini TTS...");
 
