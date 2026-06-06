@@ -1,33 +1,65 @@
-FROM pytorch/pytorch:2.5.1-cuda12.4-cudnn9-runtime
+FROM node:20-slim
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHONUNBUFFERED=1
-ENV MODEL_DIR=/workspace/ltx-video
+# Install Chromium and required system deps for Remotion
+RUN apt-get update && apt-get install -y \
+    chromium \
+    ca-certificates \
+    fonts-liberation \
+    fonts-noto-color-emoji \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libc6 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libexpat1 \
+    libfontconfig1 \
+    libgbm1 \
+    libgcc1 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libstdc++6 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxrandr2 \
+    libxrender1 \
+    libxss1 \
+    libxtst6 \
+    lsb-release \
+    wget \
+    xdg-utils \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y git ffmpeg && rm -rf /var/lib/apt/lists/*
+# Tell Remotion where to find Chrome
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV REMOTION_CHROME_EXECUTABLE=/usr/bin/chromium
 
-RUN pip install --no-cache-dir \
-    fastapi==0.111.0 \
-    uvicorn==0.30.0 \
-    transformers==4.52.0 \
-    tokenizers==0.21.4 \
-    accelerate==1.0.1 \
-    sentencepiece==0.2.0 \
-    imageio==2.34.2 \
-    imageio-ffmpeg==0.5.1 \
-    ftfy==6.2.0 \
-    "huggingface_hub[cli]==0.34.4" \
-    git+https://github.com/huggingface/diffusers@62ec337e30cde4cfc41da0454d9c98d87cdb75f0
+WORKDIR /app
 
-# Copy server files to /app — NOT /workspace (volume disk mounts there and wipes it)
-RUN mkdir -p /app
-COPY src/runpod/server.py /app/tacp_server.py
-COPY src/runpod/hydrate_model.py /app/hydrate_model.py
-COPY src/runpod/entrypoint.sh /app/entrypoint.sh
-RUN sed -i 's/\r//' /app/entrypoint.sh && chmod +x /app/entrypoint.sh
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --omit=dev
 
-WORKDIR /workspace
+# Copy source
+COPY . .
 
-EXPOSE 8080
+# Create output directories
+RUN mkdir -p output/packages output/audio output/stills output/videos public/stills public/audio
 
-CMD ["/app/entrypoint.sh"]
+EXPOSE 3001
+
+CMD ["npx", "tsx", "src/tacp-api.ts"]
