@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "api": "tsx src/api.ts",
+    "api": "tsx src/tacp-api.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,6 +13,7 @@
   "type": "commonjs",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
+    "@aws-sdk/client-s3": "^3.1063.0",
     "@google/genai": "^1.51.0",
     "@remotion/bundler": "^4.0.456",
     "@remotion/cli": "^4.0.456",
