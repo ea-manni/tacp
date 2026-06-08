@@ -23,9 +23,10 @@ export async function renderVideo(
   pkg: VideoPackage,
   storyId: string,
   audioPath: string,
-  _duration: number
+  _duration: number,
+  segmentDurations: number[]
 ): Promise<string> {
-  console.log("\nÃ°Å¸Å½Â¬ Starting Remotion render...");
+  console.log("\nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â½ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ Starting Remotion render...");
 
   // Step 1: Copy assets to public folder
   console.log("   Copying assets to public folder...");
@@ -35,7 +36,7 @@ export async function renderVideo(
   fs.mkdirSync(publicAudioDir, { recursive: true });
   const publicAudioPath = path.join(publicAudioDir, `${storyId}.wav`);
   fs.copyFileSync(audioPath, publicAudioPath);
-  console.log("   Ã¢Å“â€¦ Audio copied");
+  console.log("   ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Audio copied");
 
   // Copy stills
   const publicStillsDir = path.join("public", "stills", storyId);
@@ -48,21 +49,18 @@ export async function renderVideo(
       path.join(publicStillsDir, file)
     );
   });
-  console.log(`   Ã¢Å“â€¦ ${stillFiles.length} stills copied`);
+  console.log(`   ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ ${stillFiles.length} stills copied`);
 
   // Step 2: Measure audio and compute per-segment frame allocations
   const rawAudioSec = getWavDurationSec(audioPath);
   const playedAudioSec = rawAudioSec / AUDIO_SPEEDUP;
   const totalFrames = Math.round(playedAudioSec * FPS);
-  console.log(`   Ã¢ÂÂ±  Audio: ${rawAudioSec.toFixed(1)}s raw -> ${playedAudioSec.toFixed(1)}s @ ${AUDIO_SPEEDUP}x`);
+  console.log(`   ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â±  Audio: ${rawAudioSec.toFixed(1)}s raw -> ${playedAudioSec.toFixed(1)}s @ ${AUDIO_SPEEDUP}x`);
   console.log(`   Total video: ${totalFrames} frames (${(totalFrames / FPS).toFixed(1)}s)`);
 
-  // Distribute frames across segments by narration character count
-  const charCounts = pkg.segments.map((s) => s.narration_text.length);
-  const totalChars = charCounts.reduce((a, b) => a + b, 0);
-
-  const segmentFrames = charCounts.map((c) =>
-    Math.round((c / totalChars) * totalFrames)
+  // Distribute frames using real per-segment audio durations
+  const segmentFrames = segmentDurations.map((d) =>
+    Math.round((d / AUDIO_SPEEDUP) * FPS)
   );
 
   // Fix any rounding drift so they sum to totalFrames exactly
@@ -71,7 +69,7 @@ export async function renderVideo(
 
   pkg.segments.forEach((s, i) => {
     console.log(
-      `      Seg ${s.index}: ${segmentFrames[i]} frames (${(segmentFrames[i] / FPS).toFixed(1)}s) - ${charCounts[i]} chars`
+      `      Seg ${s.index}: ${segmentFrames[i]} frames (${(segmentFrames[i] / FPS).toFixed(1)}s)`
     );
   });
 
@@ -113,6 +111,6 @@ export async function renderVideo(
     },
   });
 
-  console.log(`   Ã¢Å“â€¦ Video saved to ${outputPath}`);
+  console.log(`   ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ Video saved to ${outputPath}`);
   return outputPath;
 }
