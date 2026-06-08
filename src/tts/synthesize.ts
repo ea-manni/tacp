@@ -35,51 +35,11 @@ function pcmToWav(pcmBuffer: Buffer, sampleRate: number): Buffer {
   return Buffer.concat([header, pcmBuffer]);
 }
 
-function getWavDurationSec(wavBuffer: Buffer): number {
-  const sampleRate = wavBuffer.readUInt32LE(24);
-  const numChannels = wavBuffer.readUInt16LE(22);
-  const bitsPerSample = wavBuffer.readUInt16LE(34);
-  const dataSize = wavBuffer.length - 44;
-  return dataSize / (sampleRate * numChannels * (bitsPerSample / 8));
-}
-
-async function synthesizeText(
-  text: string,
-  voiceName: string,
-  ai: GoogleGenAI
-): Promise<Buffer> {
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-preview-tts",
-    contents: [{ role: "user", parts: [{ text }] }],
-    config: {
-      responseModalities: ["AUDIO"],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: voiceName },
-        },
-      },
-    },
-  });
-
-  const audioPart = response.candidates?.[0]?.content?.parts?.[0];
-  if (!audioPart?.inlineData?.data) {
-    throw new Error(`No audio returned for: "${text.slice(0, 50)}"`);
-  }
-
-  const audioBuffer = Buffer.from(audioPart.inlineData.data, "base64");
-  const mimeType = audioPart.inlineData.mimeType ?? "audio/wav";
-
-  if (mimeType.includes("L16") || mimeType.includes("pcm")) {
-    return pcmToWav(audioBuffer, 24000);
-  }
-  return audioBuffer;
-}
-
 export async function synthesize(
   pkg: VideoPackage,
   storyId: string
 ): Promise<AudioResult> {
-  console.log("\n[tts] Per-segment synthesis starting...");
+  console.log("\n[tts] Starting Gemini TTS synthesis...");
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY not set");
@@ -87,35 +47,52 @@ export async function synthesize(
   const ai = new GoogleGenAI({ apiKey });
   const { voice_name } = await selectVoice(pkg);
 
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-preview-tts",
+    contents: [{ role: "user", parts: [{ text: pkg.narration.full_text }] }],
+    config: {
+      responseModalities: ["AUDIO"],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName: voice_name },
+        },
+      },
+    },
+  });
+
+  const audioPart = response.candidates?.[0]?.content?.parts?.[0];
+  if (!audioPart?.inlineData?.data) {
+    throw new Error("No audio data returned from Gemini TTS");
+  }
+
+  const audioBuffer = Buffer.from(audioPart.inlineData.data, "base64");
+  const mimeType = audioPart.inlineData.mimeType ?? "audio/wav";
+
   const audioDir = path.join("output", "audio");
   fs.mkdirSync(audioDir, { recursive: true });
 
-  const segmentDurations: number[] = [];
-  const pcmChunks: Buffer[] = [];
-
-  for (const segment of pkg.segments) {
-    console.log(`   [seg ${segment.index}] Synthesizing...`);
-    const wavBuffer = await synthesizeText(segment.narration_text, voice_name, ai);
-    const duration = getWavDurationSec(wavBuffer);
-    segmentDurations.push(duration);
-    pcmChunks.push(wavBuffer.slice(44)); // strip WAV header, keep PCM
-    console.log(`   [seg ${segment.index}] ${duration.toFixed(2)}s`);
+  let finalBuffer = audioBuffer;
+  if (mimeType.includes("L16") || mimeType.includes("pcm")) {
+    finalBuffer = pcmToWav(audioBuffer, 24000);
   }
 
-  // Combine all PCM chunks into one WAV file
-  const combinedPcm = Buffer.concat(pcmChunks);
-  const finalWav = pcmToWav(combinedPcm, 24000);
-  const totalDuration = segmentDurations.reduce((a, b) => a + b, 0);
-
   const wavPath = path.join(audioDir, `${storyId}.wav`);
-  fs.writeFileSync(wavPath, finalWav);
+  fs.writeFileSync(wavPath, finalBuffer);
 
-  console.log(`   [tts] Done. ${totalDuration.toFixed(1)}s total across ${pkg.segments.length} segments`);
-  console.log(`   Durations: ${segmentDurations.map((d) => d.toFixed(2) + "s").join(", ")}`);
+  const dataSizeBytes = finalBuffer.length - 44;
+  const duration = dataSizeBytes / (24000 * 1 * 2);
+
+  // Character-count based segment duration estimates
+  const totalChars = pkg.segments.reduce((a, s) => a + s.narration_text.length, 0);
+  const segmentDurations = pkg.segments.map((s) =>
+    (s.narration_text.length / totalChars) * duration
+  );
+
+  console.log(`   [tts] Done. ${duration.toFixed(1)}s total`);
 
   return {
     mp3_path: wavPath,
-    duration_sec: totalDuration,
+    duration_sec: duration,
     voice_name,
     segment_durations: segmentDurations,
   };
