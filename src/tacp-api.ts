@@ -1,6 +1,7 @@
-// TACP HTTP API Server
-// Wraps the orchestrator pipeline and exposes it over HTTP for Eyita worker
-// Deploy on Railway as a separate service
+// TACP HTTP API Server — v3 (stills-first, no GPU)
+// POST /generate        → starts pipeline, returns { jobId }
+// GET  /jobs/:jobId     → polls status
+// GET  /health          → health check
 
 import express from "express";
 import cors from "cors";
@@ -8,8 +9,9 @@ import * as fs from "fs";
 import * as path from "path";
 import { generatePackage } from "./claude/generate-package.js";
 import { synthesize } from "./tts/synthesize.js";
-import { generateClips } from "./clips/generate-clips.js";
+import { generateStills } from "./stills/generate-stills.js";
 import { renderVideo } from "./remotion/render.js";
+import { uploadToR2 } from "./r2/upload.js";
 import "dotenv/config";
 
 const app = express();
@@ -18,50 +20,52 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
 
-// ── In-memory job store ───────────────────────────────────────────────────────
-// For beta: single Railway instance, sequential jobs
-// Later: move to Postgres/BullMQ job tracking
+type JobStatus =
+  | "pending"
+  | "generating_package"
+  | "generating_audio"
+  | "generating_stills"
+  | "rendering"
+  | "uploading"
+  | "completed"
+  | "failed";
+
 interface Job {
   id: string;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: JobStatus;
   storyIdea: string;
   storyId?: string;
   videoPath?: string;
   error?: string;
-  startedAt?: Date;
+  startedAt: Date;
   completedAt?: Date;
 }
 
 const jobStore = new Map<string, Job>();
 
-// ── Health check ──────────────────────────────────────────────────────────────
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    jobs: jobStore.size,
-    uptime: process.uptime(),
-  });
+function setStatus(jobId: string, status: JobStatus) {
+  const job = jobStore.get(jobId);
+  if (job) {
+    job.status = status;
+    console.log(`[${jobId}] ${status}`);
+  }
+}
+
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", jobs: jobStore.size, uptime: process.uptime() });
 });
 
-// ── POST /generate ────────────────────────────────────────────────────────────
-// Submit a video generation job — returns immediately with jobId
-app.post("/generate", async (req, res) => {
-  const { jobId, storyIdea, sessionUrl } = req.body;
+app.post("/generate", (req, res) => {
+  const { jobId, storyIdea, customNarration } = req.body;
 
   if (!jobId || !storyIdea) {
     return res.status(400).json({ error: "jobId and storyIdea are required" });
   }
 
-  if (!sessionUrl) {
-    return res.status(400).json({ error: "sessionUrl (Vast.ai GPU URL) is required" });
-  }
-
-  // Check for duplicate
   if (jobStore.has(jobId)) {
     return res.status(409).json({ error: "Job already exists", job: jobStore.get(jobId) });
   }
 
-  // Register job
   jobStore.set(jobId, {
     id: jobId,
     status: "pending",
@@ -69,13 +73,7 @@ app.post("/generate", async (req, res) => {
     startedAt: new Date(),
   });
 
-  // Write session file for generate-clips.ts to read
-  const sessionFile = path.join("output", "runpod-session.json");
-  fs.mkdirSync("output", { recursive: true });
-  fs.writeFileSync(sessionFile, JSON.stringify({ id: jobId, baseUrl: sessionUrl }));
-
-  // Run pipeline in background — don't await
-  runPipeline(jobId, storyIdea).catch((err) => {
+  runPipeline(jobId, storyIdea, customNarration).catch((err) => {
     console.error(`[${jobId}] Pipeline error:`, err.message);
     const job = jobStore.get(jobId);
     if (job) {
@@ -87,37 +85,23 @@ app.post("/generate", async (req, res) => {
   return res.status(202).json({ jobId, status: "pending" });
 });
 
-// ── GET /jobs/:jobId ──────────────────────────────────────────────────────────
-// Poll job status
 app.get("/jobs/:jobId", (req, res) => {
   const job = jobStore.get(req.params.jobId);
   if (!job) return res.status(404).json({ error: "Job not found" });
   return res.json(job);
 });
 
-// ── GET /jobs/:jobId/download ─────────────────────────────────────────────────
-// Download completed video
-app.get("/jobs/:jobId/download", (req, res) => {
-  const job = jobStore.get(req.params.jobId);
-  if (!job) return res.status(404).json({ error: "Job not found" });
-  if (job.status !== "completed") {
-    return res.status(400).json({ error: `Job not ready — status: ${job.status}` });
-  }
-  if (!job.videoPath || !fs.existsSync(job.videoPath)) {
-    return res.status(500).json({ error: "Video file missing" });
-  }
-
-  return res.download(job.videoPath, `${job.storyId}.mp4`);
-});
-
-// ── Pipeline runner ───────────────────────────────────────────────────────────
-async function runPipeline(jobId: string, storyIdea: string): Promise<void> {
+async function runPipeline(
+  jobId: string,
+  storyIdea: string,
+  customNarration?: string
+): Promise<void> {
   const job = jobStore.get(jobId)!;
-  job.status = "processing";
 
   console.log(`\n[${jobId}] Starting pipeline: "${storyIdea}"`);
 
-  // Step 1: Generate package (resume-safe)
+  // Step 1: Package
+  setStatus(jobId, "generating_package");
   const packagesDir = path.join("output", "packages");
   fs.mkdirSync(packagesDir, { recursive: true });
 
@@ -136,51 +120,59 @@ async function runPipeline(jobId: string, storyIdea: string): Promise<void> {
     console.log(`[${jobId}] Package exists — loading ${existingPkg}`);
     pkg = JSON.parse(fs.readFileSync(path.join(packagesDir, existingPkg), "utf-8"));
   } else {
-    console.log(`[${jobId}] Generating package...`);
-    pkg = await generatePackage(storyIdea);
+    pkg = await generatePackage(storyIdea, customNarration);
   }
 
   const storyId = pkg.story_id;
   job.storyId = storyId;
 
-  // Step 2: TTS (resume-safe)
+  // Step 2: Audio
+  setStatus(jobId, "generating_audio");
   const audioWavPath = path.join("output", "audio", `${storyId}.wav`);
   const audioMp3Path = path.join("output", "audio", `${storyId}.mp3`);
 
-  let audioResult: { mp3_path: string; duration_sec: number };
+  let audioResult: { mp3_path: string; duration_sec: number; segment_durations: number[] };
+
   if (fs.existsSync(audioWavPath) || fs.existsSync(audioMp3Path)) {
     const existingPath = fs.existsSync(audioWavPath) ? audioWavPath : audioMp3Path;
+    const estimatedDuration = pkg.narration?.estimated_duration_sec ?? 60;
+    const totalChars = pkg.segments.reduce((a: number, s: any) => a + s.narration_text.length, 0);
+    const segmentDurations = pkg.segments.map((s: any) =>
+      (s.narration_text.length / totalChars) * estimatedDuration
+    );
     console.log(`[${jobId}] Audio exists — skipping TTS`);
-    audioResult = {
-      mp3_path: existingPath,
-      duration_sec: pkg.narration?.estimated_duration_sec ?? 60,
-    };
+    audioResult = { mp3_path: existingPath, duration_sec: estimatedDuration, segment_durations: segmentDurations };
   } else {
-    console.log(`[${jobId}] Generating audio...`);
     audioResult = await synthesize(pkg, storyId);
   }
 
-  // Step 3: Generate clips
-  console.log(`[${jobId}] Generating clips...`);
-  await generateClips(pkg, storyId);
+  // Step 3: Stills
+  setStatus(jobId, "generating_stills");
+  await generateStills(pkg, storyId);
 
   // Step 4: Render
-  console.log(`[${jobId}] Rendering video...`);
+  setStatus(jobId, "rendering");
   const videoPath = await renderVideo(
     pkg,
     storyId,
     audioResult.mp3_path,
-    audioResult.duration_sec
+    audioResult.duration_sec,
+    audioResult.segment_durations
   );
 
+  // Step 5: Upload to B2
+  setStatus(jobId, "uploading");
+  const r2Url = await uploadToR2(videoPath, `videos/${jobId}.mp4`);
+
+  try { fs.unlinkSync(videoPath); } catch {}
+
   job.status = "completed";
-  job.videoPath = videoPath;
+  job.videoPath = r2Url;
   job.completedAt = new Date();
 
-  console.log(`[${jobId}] ✅ Done: ${videoPath}`);
+  console.log(`[${jobId}] Done: ${r2Url}`);
 }
 
-// ── Start server ──────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`TACP API running on port ${PORT}`);
 });
