@@ -1,4 +1,4 @@
-// TACP — Toledot Automated Content Pipeline
+// TACP Ã¢â‚¬â€ Toledot Automated Content Pipeline
 // Usage (generate from idea):  npx tsx src/orchestrator.ts "your story idea"
 // Usage (custom narration):    npx tsx src/orchestrator.ts --custom "your written story"
 // Resume-safe: skips steps that already have output on disk
@@ -38,7 +38,7 @@ async function run() {
     }
   }
 
-  console.log("\nTACP — Toledot Automated Content Pipeline");
+  console.log("\nTACP Ã¢â‚¬â€ Toledot Automated Content Pipeline");
   console.log("=".repeat(50));
   console.log(`Mode:  ${customNarration ? "custom narration" : "generate from idea"}`);
   console.log(`Input: ${storyIdea}`);
@@ -64,7 +64,7 @@ async function run() {
   let storyId: string;
 
   if (existingPkg) {
-    console.log(`\n[1/4] Package exists — loading ${existingPkg}`);
+    console.log(`\n[1/4] Package exists Ã¢â‚¬â€ loading ${existingPkg}`);
     pkg = JSON.parse(fs.readFileSync(path.join(packagesDir, existingPkg), "utf-8"));
     storyId = pkg.story_id;
     console.log(`      Story ID: ${storyId}`);
@@ -83,7 +83,7 @@ async function run() {
   if (fs.existsSync(audioWavPath) || fs.existsSync(audioMp3Path)) {
     const existingPath = fs.existsSync(audioWavPath) ? audioWavPath : audioMp3Path;
     const estimatedDuration = pkg.narration?.estimated_duration_sec ?? 60;
-    console.log(`\n[2/4] Audio exists — skipping TTS (${existingPath})`);
+    console.log(`\n[2/4] Audio exists Ã¢â‚¬â€ skipping TTS (${existingPath})`);
     audioResult = { mp3_path: existingPath, duration_sec: estimatedDuration };
   } else {
     console.log("\n[2/4] Generating narration...");
