@@ -11,7 +11,7 @@ const client = new Anthropic({
 
 // Use Sonnet for reliability on complex JSON schemas.
 // Swap to claude-haiku-4-5-20251001 if speed/cost is priority.
-const MODEL = "claude-sonnet-4-6";
+const MODEL = "claude-sonnet-4-5";
 
 export async function generatePackage(
   storyIdea: string,
