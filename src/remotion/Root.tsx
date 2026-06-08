@@ -20,6 +20,7 @@ export const RemotionRoot: React.FC = () => {
           narration: { full_text: "" },
           storyId: "",
           segmentFrames: [],
+          segmentImages: {},
         }}
       />
 
@@ -41,6 +42,7 @@ export const RemotionRoot: React.FC = () => {
             { index: 3, narration_text: "And everything changed.", motion: "pan_left" },
           ],
           segmentFrames: [90, 75, 85],
+          segmentImages: {},
         }}
       />
 

@@ -7,7 +7,6 @@ import {
   useCurrentFrame,
   interpolate,
   spring,
-  staticFile,
 } from "remotion";
 import type { Segment } from "../types";
 import { StillShot } from "./StillShot";
@@ -203,13 +202,14 @@ const SegmentStill: React.FC<{
 
   return (
     <StillShot
-      imageSrc={`stills/${storyId}/${segment.index}.jpg`}
+      imageSrc={segmentImages[segment.index] ?? ""}
       motion={motion}
     />
   );
 };
 
 export interface ToledotVideoProps {
+  segmentImages: Record<number, string>;
   segments: Segment[];
   narration: { full_text: string };
   storyId: string;
@@ -220,6 +220,7 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
   segments,
   storyId,
   segmentFrames,
+  segmentImages,
 }) => {
   const { fps } = useVideoConfig();
 
