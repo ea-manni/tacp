@@ -23,7 +23,8 @@ export async function renderVideo(
   storyId: string,
   audioPath: string,
   _duration: number,
-  segmentDurations: number[]
+  segmentDurations: number[],
+  preloadedImages: Record<number, string> = {}
 ): Promise<string> {
   console.log("\nStarting Remotion render...");
 
