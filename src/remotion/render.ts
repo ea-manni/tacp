@@ -82,6 +82,7 @@ export async function renderVideo(
   };
 
   const composition = await selectComposition({
+    timeoutInMilliseconds: 120000,
     serveUrl: bundled,
     id: "ToledotVideo",
     inputProps,
@@ -93,6 +94,10 @@ export async function renderVideo(
   fs.mkdirSync(path.join("output", "videos"), { recursive: true });
 
   await renderMedia({
+    chromiumOptions: {
+      args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+    },
+    timeoutInMilliseconds: 120000,
     composition: { ...composition, durationInFrames: totalFrames, fps: FPS },
     serveUrl: bundled,
     codec: "h264",
