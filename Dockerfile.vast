@@ -76,4 +76,4 @@ COPY . .
 RUN mkdir -p output/packages output/audio output/stills output/videos public/stills public/audio
 
 EXPOSE 3002
-CMD ["npx", "tsx", "src/vast-api.ts"]
+ENTRYPOINT ["npx", "tsx", "src/vast-api.ts"]
