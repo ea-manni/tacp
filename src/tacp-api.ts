@@ -1,7 +1,7 @@
-// TACP HTTP API Server — v3 (stills-first, no GPU)
-// POST /generate        → starts pipeline, returns { jobId }
-// GET  /jobs/:jobId     → polls status
-// GET  /health          → health check
+// TACP HTTP API Server — v4 (Railway orchestrator + Vast.ai renderer)
+// POST /generate        -> starts pipeline, returns { jobId }
+// GET  /jobs/:jobId     -> polls status
+// GET  /health          -> health check
 
 import express from "express";
 import cors from "cors";
@@ -10,8 +10,6 @@ import * as path from "path";
 import { generatePackage } from "./claude/generate-package.js";
 import { synthesize } from "./tts/synthesize.js";
 import { generateStills } from "./stills/generate-stills.js";
-import { renderVideo } from "./remotion/render.js";
-import { uploadToR2 } from "./r2/upload.js";
 import "dotenv/config";
 
 const app = express();
@@ -19,6 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
+const VAST_RENDER_URL = process.env.VAST_RENDER_URL!;
 
 type JobStatus =
   | "pending"
@@ -26,7 +25,6 @@ type JobStatus =
   | "generating_audio"
   | "generating_stills"
   | "rendering"
-  | "uploading"
   | "completed"
   | "failed";
 
@@ -100,7 +98,7 @@ async function runPipeline(
 
   console.log(`\n[${jobId}] Starting pipeline: "${storyIdea}"`);
 
-  // Step 1: Package
+  // Step 1: Generate package with Claude
   setStatus(jobId, "generating_package");
   const packagesDir = path.join("output", "packages");
   fs.mkdirSync(packagesDir, { recursive: true });
@@ -126,51 +124,79 @@ async function runPipeline(
   const storyId = pkg.story_id;
   job.storyId = storyId;
 
-  // Step 2: Audio
+  // Step 2: Generate audio with Gemini TTS
   setStatus(jobId, "generating_audio");
   const audioWavPath = path.join("output", "audio", `${storyId}.wav`);
-  const audioMp3Path = path.join("output", "audio", `${storyId}.mp3`);
 
   let audioResult: { mp3_path: string; duration_sec: number; segment_durations: number[] };
 
-  if (fs.existsSync(audioWavPath) || fs.existsSync(audioMp3Path)) {
-    const existingPath = fs.existsSync(audioWavPath) ? audioWavPath : audioMp3Path;
+  if (fs.existsSync(audioWavPath)) {
     const estimatedDuration = pkg.narration?.estimated_duration_sec ?? 60;
     const totalChars = pkg.segments.reduce((a: number, s: any) => a + s.narration_text.length, 0);
     const segmentDurations = pkg.segments.map((s: any) =>
       (s.narration_text.length / totalChars) * estimatedDuration
     );
     console.log(`[${jobId}] Audio exists — skipping TTS`);
-    audioResult = { mp3_path: existingPath, duration_sec: estimatedDuration, segment_durations: segmentDurations };
+    audioResult = { mp3_path: audioWavPath, duration_sec: estimatedDuration, segment_durations: segmentDurations };
   } else {
     audioResult = await synthesize(pkg, storyId);
   }
 
-  // Step 3: Stills
+  // Step 3: Generate stills with Cloudflare Workers AI
   setStatus(jobId, "generating_stills");
   await generateStills(pkg, storyId);
 
-  // Step 4: Render
+  // Step 4: Send to Vast.ai for WhisperX alignment + Remotion render + B2 upload
   setStatus(jobId, "rendering");
-  const videoPath = await renderVideo(
-    pkg,
-    storyId,
-    audioResult.mp3_path,
-    audioResult.duration_sec,
-    audioResult.segment_durations
-  );
+  console.log(`[${jobId}] Sending to Vast.ai for render...`);
 
-  // Step 5: Upload to B2
-  setStatus(jobId, "uploading");
-  const r2Url = await uploadToR2(videoPath, `videos/${jobId}.mp4`);
+  // Read audio as base64
+  const audioBase64 = fs.readFileSync(audioResult.mp3_path).toString("base64");
 
-  try { fs.unlinkSync(videoPath); } catch {}
+  // Read stills as base64
+  const segmentImages: Record<number, string> = {};
+  for (const seg of pkg.segments) {
+    const stillPath = path.join("output", "stills", storyId, `${seg.index}.jpg`);
+    if (fs.existsSync(stillPath)) {
+      const b64 = fs.readFileSync(stillPath).toString("base64");
+      segmentImages[seg.index] = `data:image/jpeg;base64,${b64}`;
+    }
+  }
+
+  // Call Vast.ai render endpoint
+  const renderRes = await fetch(`${VAST_RENDER_URL}/render`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jobId,
+      storyId,
+      pkg,
+      audioBase64,
+      segmentImages,
+    }),
+  });
+
+  if (!renderRes.ok) {
+    const err = await renderRes.text();
+    throw new Error(`Vast.ai render failed: ${err}`);
+  }
+
+  const { outputUrl } = await renderRes.json() as { outputUrl: string };
+
+  // Cleanup local files
+  try { fs.unlinkSync(audioResult.mp3_path); } catch {}
+  const stillsDir = path.join("output", "stills", storyId);
+  if (fs.existsSync(stillsDir)) {
+    fs.readdirSync(stillsDir).forEach(f => {
+      try { fs.unlinkSync(path.join(stillsDir, f)); } catch {}
+    });
+  }
 
   job.status = "completed";
-  job.videoPath = r2Url;
+  job.videoPath = outputUrl;
   job.completedAt = new Date();
 
-  console.log(`[${jobId}] Done: ${r2Url}`);
+  console.log(`[${jobId}] Done: ${outputUrl}`);
 }
 
 app.listen(PORT, () => {
