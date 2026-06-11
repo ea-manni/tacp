@@ -80,8 +80,10 @@ import json
 import sys
 
 audio_path = sys.argv[1]
-segments_json = sys.argv[2]
-segments = json.loads(segments_json)
+segments_path = sys.argv[2]
+
+with open(segments_path) as f:
+    segments = json.load(f)
 
 device = "cuda"
 model = whisperx.load_model("base", device, compute_type="float16")
@@ -122,9 +124,11 @@ print(json.dumps({"segment_durations": segment_durations, "total_duration": tota
   const scriptPath = path.join("output", "align.py");
   fs.writeFileSync(scriptPath, script);
 
-  const segmentsJson = JSON.stringify(pkg.segments).replace(/'/g, "\\'");
+  const segmentsPath = path.join("output", "segments.json");
+  fs.writeFileSync(segmentsPath, JSON.stringify(pkg.segments));
+
   const result = execSync(
-    `${whisperPython} ${scriptPath} "${audioPath}" '${segmentsJson}'`,
+    `${whisperPython} ${scriptPath} ${audioPath} ${segmentsPath}`,
     { maxBuffer: 10 * 1024 * 1024 }
   ).toString().trim();
 
