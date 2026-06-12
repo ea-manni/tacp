@@ -5,7 +5,6 @@ import * as path from "path";
 import { execSync } from "child_process";
 import { renderVideo } from "./remotion/render.js";
 import { uploadToR2 } from "./r2/upload.js";
-import { generateStill } from "../imageGen.js";
 import "dotenv/config";
 
 const app = express();
@@ -26,8 +25,8 @@ app.post("/render", async (req, res) => {
       ? JSON.parse(req.body.toString()) 
       : req.body;
   } catch (e) {
-    console.error("Body parse error:", String(req.body).slice(0, 150));
-    return res.status(400).json({ error: "Invalid JSON body" });
+    console.error("Body parse failed");
+    return res.status(400).json({ error: "Invalid JSON" });
   }
 
   const { jobId, storyId, pkg, audioBase64 } = body;
@@ -35,40 +34,43 @@ app.post("/render", async (req, res) => {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
-  console.log(`[${jobId}] Render request received`);
+  console.log(`[${jobId}] Render request received on Vast.ai`);
 
   try {
-    // Audio
+    // 1. Save audio
     const audioDir = path.join("output", "audio");
     fs.mkdirSync(audioDir, { recursive: true });
     const audioPath = path.join(audioDir, `${storyId}.wav`);
     fs.writeFileSync(audioPath, Buffer.from(audioBase64, "base64"));
+    console.log(`[${jobId}] Audio saved`);
 
-    // Stills on Vast.ai
-    console.log(`[${jobId}] Generating stills...`);
-    for (const seg of pkg.segments || []) {
-      const prompt = seg.video_prompt || `Cinematic historical scene: ${seg.narration_text?.substring(0, 120)}`;
-      await generateStill(prompt, storyId, seg.index);
-    }
-
-    // WhisperX
+    // 2. WhisperX alignment
+    console.log(`[${jobId}] Running WhisperX...`);
     const alignmentResult = runWhisperX(audioPath, pkg);
 
-    // Remotion
+    // 3. Remotion render (stills will be handled inside renderVideo if needed)
+    console.log(`[${jobId}] Starting Remotion render...`);
     const videoPath = await renderVideo(
-      pkg, storyId, audioPath, alignmentResult.totalDuration, alignmentResult.segmentDurations
+      pkg,
+      storyId,
+      audioPath,
+      alignmentResult.totalDuration,
+      alignmentResult.segmentDurations
     );
 
-    // Upload
+    // 4. Upload to B2
+    console.log(`[${jobId}] Uploading to B2...`);
     const outputUrl = await uploadToR2(videoPath, `videos/${jobId}.mp4`);
 
     // Cleanup
     try { fs.unlinkSync(audioPath); } catch {}
     try { fs.unlinkSync(videoPath); } catch {}
 
+    console.log(`[${jobId}] ✅ Render complete: ${outputUrl}`);
     return res.json({ outputUrl });
+
   } catch (err: any) {
-    console.error(`[${jobId}] Failed:`, err.message);
+    console.error(`[${jobId}] Render failed:`, err.message);
     return res.status(500).json({ error: err.message });
   }
 });
