@@ -210,6 +210,7 @@ const SegmentStill: React.FC<{
 
 export interface ToledotVideoProps {
   segmentImages: Record<number, string>;
+  audioSrc: string;
   segments: Segment[];
   narration: { full_text: string };
   storyId: string;
@@ -221,6 +222,7 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
   storyId,
   segmentFrames,
   segmentImages,
+  audioSrc,
 }) => {
   const { fps } = useVideoConfig();
 
@@ -287,7 +289,7 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
   return (
     <AbsoluteFill style={{ backgroundColor: "black" }}>
       <Audio
-        src={staticFile(`audio/${storyId}.wav`)}
+        src={audioSrc}
         playbackRate={AUDIO_SPEEDUP}
       />
 
