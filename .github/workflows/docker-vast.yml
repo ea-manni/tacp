@@ -27,4 +27,4 @@ jobs:
           context: .
           file: Dockerfile.vast
           push: true
-          tags: eolowo/tacp-vast:latest,eolowo/tacp-vast:v2
+          tags: eolowo/tacp-vast:latest,eolowo/tacp-vast:v3
