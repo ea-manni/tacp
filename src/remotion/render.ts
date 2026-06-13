@@ -23,30 +23,43 @@ export async function renderVideo(
   storyId: string,
   audioPath: string,
   _duration: number,
-  segmentDurations: number[]
+  segmentDurations: number[],
+  preloadedImages: Record<number, string> = {}
 ): Promise<string> {
   console.log("\n[remotion] Starting render...");
 
-  const publicAudioDir = path.join("public", "audio");
-  fs.mkdirSync(publicAudioDir, { recursive: true });
-  const publicAudioPath = path.join(publicAudioDir, `${storyId}.wav`);
-  fs.copyFileSync(audioPath, publicAudioPath);
+  // Audio as data URI (no public folder, no staticFile)
+  const audioBuffer = fs.readFileSync(audioPath);
+  const audioSrc = `data:audio/wav;base64,${audioBuffer.toString("base64")}`;
 
+  // Stills as data URIs - use preloaded if provided, else read from disk
+  const segmentImages: Record<number, string> = { ...preloadedImages };
+  for (const seg of pkg.segments) {
+    if (segmentImages[seg.index]) continue;
+    const stillPath = path.join("output", "stills", storyId, `${seg.index}.jpg`);
+    if (fs.existsSync(stillPath)) {
+      const b64 = fs.readFileSync(stillPath).toString("base64");
+      segmentImages[seg.index] = `data:image/jpeg;base64,${b64}`;
+      console.log(`[remotion] Still ${seg.index} loaded from disk`);
+    } else {
+      console.error(`[remotion] Still ${seg.index} NOT FOUND at ${stillPath}`);
+    }
+  }
+
+  // Frame allocation
   const rawAudioSec = getWavDurationSec(audioPath);
   const playedAudioSec = rawAudioSec / AUDIO_SPEEDUP;
   const totalFrames = Math.round(playedAudioSec * FPS);
-
-  const segmentFrames = segmentDurations.map(d => 
+  const segmentFrames = segmentDurations.map((d) =>
     Math.round((d / AUDIO_SPEEDUP) * FPS)
   );
   const drift = totalFrames - segmentFrames.reduce((a, b) => a + b, 0);
   segmentFrames[segmentFrames.length - 1] += drift;
-
   console.log(`[remotion] Total frames: ${totalFrames} | Audio: ${playedAudioSec.toFixed(1)}s`);
 
+  // Bundle
   const bundled = await bundle({
     entryPoint: path.resolve(process.cwd(), "src/index.ts"),
-    publicDir: path.resolve(process.cwd(), "public"),
   });
 
   const inputProps = {
@@ -54,7 +67,8 @@ export async function renderVideo(
     narration: pkg.narration,
     storyId,
     segmentFrames,
-    // Still images will be loaded inside Remotion via storyId + index
+    segmentImages,
+    audioSrc,
   };
 
   const composition = await selectComposition({
@@ -72,11 +86,11 @@ export async function renderVideo(
     codec: "h264",
     outputLocation: outputPath,
     inputProps,
-    chromiumOptions: { args: ["--no-sandbox", "--disable-dev-shm-usage"] },
+    chromiumOptions: { args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] },
+    timeoutInMilliseconds: 120000,
     onProgress: ({ progress }) => {
-      if (Math.round(progress * 100) % 20 === 0) {
-        console.log(`[remotion] Progress: ${Math.round(progress * 100)}%`);
-      }
+      const pct = Math.round(progress * 100);
+      if (pct % 20 === 0) console.log(`[remotion] Progress: ${pct}%`);
     },
   });
 
