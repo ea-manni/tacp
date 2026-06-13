@@ -299,7 +299,7 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
           from={segmentStarts[index]}
           durationInFrames={safeSegmentFrames[index]}
         >
-          <SegmentStill segment={seg} storyId={storyId} />
+          <SegmentStill segment={seg} storyId={storyId} segmentImages={segmentImages} />
         </Sequence>
       ))}
 
