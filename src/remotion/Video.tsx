@@ -14,19 +14,6 @@ import { StillShot } from "./StillShot";
 const FPS = 30;
 const AUDIO_SPEEDUP = 1.15;
 
-type StillMotion = "push_in" | "pull_out" | "pan_left" | "pan_right" | "drift";
-
-const mapSegmentMotionToStillMotion = (motion?: string): StillMotion => {
-  if (motion === "zoom_in") return "push_in";
-  if (motion === "zoom_out") return "pull_out";
-  if (motion === "slow_pan") return "pan_left";
-  if (motion === "pan_left") return "pan_left";
-  if (motion === "pan_right") return "pan_right";
-  if (motion === "drift") return "drift";
-
-  return "push_in";
-};
-
 // Subtitle
 const Subtitle: React.FC<{
   text: string;
@@ -190,8 +177,9 @@ const SubscribeSticker: React.FC<{ startFrame: number }> = ({ startFrame }) => {
 const SegmentStill: React.FC<{
   segment: Segment;
   storyId: string;
-}> = ({ segment, storyId }) => {
-  const motion =
+  segmentImages: Record<number, string>;
+}> = ({ segment, storyId, segmentImages }) => {
+    const motion =
     segment.motion === "zoom_in"
       ? "push_in"
       : segment.motion === "zoom_out"
@@ -209,12 +197,12 @@ const SegmentStill: React.FC<{
 };
 
 export interface ToledotVideoProps {
-  segmentImages: Record<number, string>;
-  audioSrc: string;
   segments: Segment[];
   narration: { full_text: string };
   storyId: string;
   segmentFrames: number[];
+  segmentImages: Record<number, string>;
+  audioSrc: string;
 }
 
 export const ToledotVideo: React.FC<ToledotVideoProps> = ({
@@ -230,28 +218,19 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
     return <AbsoluteFill style={{ backgroundColor: "black" }} />;
   }
 
-  // Make sure every segment has a frame length.
-  // If one is missing, default to 5 seconds.
   const safeSegmentFrames = segments.map((_, index) => {
     const frames = segmentFrames?.[index];
-
-    if (!frames || frames <= 0) {
-      return FPS * 5;
-    }
-
+    if (!frames || frames <= 0) return FPS * 5;
     return Math.round(frames);
   });
 
-  // Compute start frame for each segment
   const segmentStarts: number[] = [];
   let cursor = 0;
-
   for (const frames of safeSegmentFrames) {
     segmentStarts.push(cursor);
     cursor += frames;
   }
 
-  // Build subtitle chunks
   const subtitleChunks: {
     text: string;
     startFrame: number;
@@ -260,13 +239,11 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
 
   segments.forEach((seg, index) => {
     const narrationText = seg.narration_text?.trim();
-
     if (!narrationText) return;
 
     const words = narrationText.split(" ");
     const wordsPerChunk = 5;
     const chunks: string[] = [];
-
     for (let i = 0; i < words.length; i += wordsPerChunk) {
       chunks.push(words.slice(i, i + wordsPerChunk).join(" "));
     }
@@ -288,10 +265,7 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
 
   return (
     <AbsoluteFill style={{ backgroundColor: "black" }}>
-      <Audio
-        src={audioSrc}
-        playbackRate={AUDIO_SPEEDUP}
-      />
+      <Audio src={audioSrc} playbackRate={AUDIO_SPEEDUP} />
 
       {segments.map((seg, index) => (
         <Sequence
@@ -299,7 +273,7 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
           from={segmentStarts[index]}
           durationInFrames={safeSegmentFrames[index]}
         >
-          <SegmentStill segment={seg} storyId={storyId} segmentImages={segmentImages} />
+          <SegmentStill segment={seg} segmentImages={segmentImages} />
         </Sequence>
       ))}
 
@@ -317,7 +291,6 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
         .map((seg) => {
           const segmentIndex = segments.indexOf(seg);
           const overlay = seg.overlay!;
-
           return (
             <OverlayCard
               key={seg.index}
