@@ -38,9 +38,9 @@ export async function generateStill(
     throw new Error(`Cloudflare AI failed ${res.status}: ${body.slice(0, 200)}`);
   }
 
-  // Response is raw image bytes (JPEG/PNG)
-  const arrayBuffer = await res.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  // Response is JSON: { result: { image: "<base64>" } }
+const json = await res.json() as { result: { image: string } };
+const buffer = Buffer.from(json.result.image, "base64");
 
   const dir = path.join("output", "stills", storyId);
   fs.mkdirSync(dir, { recursive: true });
