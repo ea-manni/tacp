@@ -24,8 +24,12 @@ export async function renderVideo(
   audioPath: string,
   _duration: number,
   segmentDurations: number[],
-  preloadedImages: Record<number, string> = {}
+  preloadedImages: Record<number, string> = {},
+  aspectRatio: string = "9:16"
 ): Promise<string> {
+  const compWidth  = aspectRatio === "16:9" ? 1920 : 1080;
+  const compHeight = aspectRatio === "16:9" ? 1080 : 1920;
+
   console.log("\n[remotion] Starting render...");
 
   // Audio as data URI (no public folder, no staticFile)
@@ -81,12 +85,12 @@ export async function renderVideo(
   fs.mkdirSync(path.join("output", "videos"), { recursive: true });
 
   await renderMedia({
-    composition: { ...composition, durationInFrames: totalFrames, fps: FPS },
+    composition: { ...composition, durationInFrames: totalFrames, fps: FPS, width: compWidth, height: compHeight },
     serveUrl: bundled,
     codec: "h264",
     outputLocation: outputPath,
     inputProps,
-    chromiumOptions: { args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] },
+    chromiumOptions: { disableWebSecurity: true, ignoreCertificateErrors: true },
     timeoutInMilliseconds: 120000,
     onProgress: ({ progress }) => {
       const pct = Math.round(progress * 100);

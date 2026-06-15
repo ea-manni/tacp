@@ -5,7 +5,8 @@ import * as path from "path";
 
 export async function generateStills(
   pkg: VideoPackage,
-  storyId: string
+  storyId: string,
+  aspectRatio: string = "9:16"
 ): Promise<void> {
   console.log(`\n[stills] Generating ${pkg.segments.length} stills...`);
 
@@ -17,7 +18,7 @@ export async function generateStills(
       continue;
     }
 
-    await generateStill(segment.video_prompt, storyId, segment.index);
+    await generateStill(segment.video_prompt, storyId, segment.index, aspectRatio);
   }
 
   console.log(`[stills] Done.`);

@@ -24,7 +24,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.post("/render", async (req, res) => {
-  const { jobId, storyId, pkg, audioBase64, segmentImages } = req.body;
+  const { jobId, storyId, pkg, audioBase64, segmentImages, aspectRatio } = req.body;
 
   if (!jobId || !storyId || !pkg || !audioBase64) {
     return res.status(400).json({ error: "jobId, storyId, pkg, audioBase64 required" });

@@ -12,9 +12,13 @@ function sleep(ms: number): Promise<void> {
 export async function generateStill(
   prompt: string,
   storyId: string,
-  segmentIndex: number
+  segmentIndex: number,
+  aspectRatio: string = "9:16"
 ): Promise<string> {
   console.log(`[imageGen] Segment ${segmentIndex}: submitting to Cloudflare Workers AI...`);
+
+  const width  = aspectRatio === "16:9" ? 1216 : 832;
+  const height = aspectRatio === "16:9" ? 832  : 1216;
 
   const res = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/${MODEL}`,
@@ -27,8 +31,8 @@ export async function generateStill(
       body: JSON.stringify({
         prompt,
         num_steps: 8,
-        width: 832,
-        height: 1216,
+        width,
+        height,
       }),
     }
   );
