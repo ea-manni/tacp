@@ -55,6 +55,7 @@ app.get("/health", (_req, res) => {
 
 app.post("/generate", (req, res) => {
   const { jobId, storyIdea, customNarration, aspectRatio } = req.body;
+  console.log(`[${jobId}] DEBUG: received aspectRatio = "${aspectRatio}"`);
 
   if (!jobId || !storyIdea) {
     return res.status(400).json({ error: "jobId and storyIdea are required" });

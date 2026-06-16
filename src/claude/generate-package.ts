@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { MASTER_PROMPT, CUSTOM_STORY_PROMPT } from "./master-prompt.js";
+import { buildMasterPrompt, buildCustomStoryPrompt } from "./master-prompt.js";
 import type { VideoPackage } from "../types.js";
 import * as fs from "fs";
 import * as path from "path";
@@ -15,9 +15,15 @@ const MODEL = "claude-sonnet-4-5";
 
 export async function generatePackage(
   storyIdea: string,
-  customNarration?: string
+  customNarration?: string,
+  targetWordCount: number = 117,
 ): Promise<VideoPackage> {
-  const systemPrompt = customNarration ? CUSTOM_STORY_PROMPT : MASTER_PROMPT;
+  const narrationWordCount = customNarration
+    ? customNarration.trim().split(/\s+/).length
+    : targetWordCount;
+  const systemPrompt = customNarration
+    ? buildCustomStoryPrompt(narrationWordCount)
+    : buildMasterPrompt(targetWordCount);
 
   const userMessage = customNarration
     ? `Here is the narration to produce:\n\n${customNarration}`
@@ -33,9 +39,15 @@ export async function generatePackage(
   let raw: string;
 
   try {
+    const estimatedSegments = Math.max(
+      4,
+      Math.round(((narrationWordCount / 140) * 60) / 9),
+    );
+    const maxTokens = Math.min(16000, Math.max(4096, estimatedSegments * 350));
+
     const message = await client.messages.create({
       model: MODEL,
-      max_tokens: 4096,
+      max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     });
@@ -59,13 +71,16 @@ export async function generatePackage(
   } catch {
     console.error("[Claude] Raw output that failed to parse:");
     console.error(cleaned.slice(0, 500));
-    throw new Error("Claude returned invalid JSON — check the raw output above.");
+    throw new Error(
+      "Claude returned invalid JSON — check the raw output above.",
+    );
   }
 
   // Validate required fields
   if (!pkg.story_id) throw new Error("Package missing story_id");
   if (!pkg.segments?.length) throw new Error("Package missing segments");
-  if (!pkg.narration?.full_text) throw new Error("Package missing narration.full_text");
+  if (!pkg.narration?.full_text)
+    throw new Error("Package missing narration.full_text");
 
   // Save to disk
   const packagesDir = path.join("output", "packages");
