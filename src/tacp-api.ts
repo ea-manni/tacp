@@ -54,14 +54,16 @@ app.get("/health", (_req, res) => {
 });
 
 app.post("/generate", (req, res) => {
-  const { jobId, storyIdea, customNarration } = req.body;
+  const { jobId, storyIdea, customNarration, aspectRatio } = req.body;
 
   if (!jobId || !storyIdea) {
     return res.status(400).json({ error: "jobId and storyIdea are required" });
   }
 
   if (jobStore.has(jobId)) {
-    return res.status(409).json({ error: "Job already exists", job: jobStore.get(jobId) });
+    return res
+      .status(409)
+      .json({ error: "Job already exists", job: jobStore.get(jobId) });
   }
 
   jobStore.set(jobId, {
@@ -71,14 +73,16 @@ app.post("/generate", (req, res) => {
     startedAt: new Date(),
   });
 
-  runPipeline(jobId, storyIdea, customNarration).catch((err) => {
-    console.error(`[${jobId}] Pipeline error:`, err.message);
-    const job = jobStore.get(jobId);
-    if (job) {
-      job.status = "failed";
-      job.error = err.message;
-    }
-  });
+  runPipeline(jobId, storyIdea, customNarration, aspectRatio ?? "9:16").catch(
+    (err) => {
+      console.error(`[${jobId}] Pipeline error:`, err.message);
+      const job = jobStore.get(jobId);
+      if (job) {
+        job.status = "failed";
+        job.error = err.message;
+      }
+    },
+  );
 
   return res.status(202).json({ jobId, status: "pending" });
 });
@@ -92,7 +96,8 @@ app.get("/jobs/:jobId", (req, res) => {
 async function runPipeline(
   jobId: string,
   storyIdea: string,
-  customNarration?: string
+  customNarration?: string,
+  aspectRatio: string = "9:16",
 ): Promise<void> {
   const job = jobStore.get(jobId)!;
 
@@ -109,14 +114,16 @@ async function runPipeline(
     .replace(/^_|_$/g, "")
     .slice(0, 50);
 
-  const existingPkg = fs.readdirSync(packagesDir).find(
-    (f) => f.endsWith(".json") && f.includes(candidateId.slice(0, 20))
-  );
+  const existingPkg = fs
+    .readdirSync(packagesDir)
+    .find((f) => f.endsWith(".json") && f.includes(candidateId.slice(0, 20)));
 
   let pkg: any;
   if (existingPkg) {
     console.log(`[${jobId}] Package exists — loading ${existingPkg}`);
-    pkg = JSON.parse(fs.readFileSync(path.join(packagesDir, existingPkg), "utf-8"));
+    pkg = JSON.parse(
+      fs.readFileSync(path.join(packagesDir, existingPkg), "utf-8"),
+    );
   } else {
     pkg = await generatePackage(storyIdea, customNarration);
   }
@@ -128,23 +135,34 @@ async function runPipeline(
   setStatus(jobId, "generating_audio");
   const audioWavPath = path.join("output", "audio", `${storyId}.wav`);
 
-  let audioResult: { mp3_path: string; duration_sec: number; segment_durations: number[] };
+  let audioResult: {
+    mp3_path: string;
+    duration_sec: number;
+    segment_durations: number[];
+  };
 
   if (fs.existsSync(audioWavPath)) {
     const estimatedDuration = pkg.narration?.estimated_duration_sec ?? 60;
-    const totalChars = pkg.segments.reduce((a: number, s: any) => a + s.narration_text.length, 0);
-    const segmentDurations = pkg.segments.map((s: any) =>
-      (s.narration_text.length / totalChars) * estimatedDuration
+    const totalChars = pkg.segments.reduce(
+      (a: number, s: any) => a + s.narration_text.length,
+      0,
+    );
+    const segmentDurations = pkg.segments.map(
+      (s: any) => (s.narration_text.length / totalChars) * estimatedDuration,
     );
     console.log(`[${jobId}] Audio exists — skipping TTS`);
-    audioResult = { mp3_path: audioWavPath, duration_sec: estimatedDuration, segment_durations: segmentDurations };
+    audioResult = {
+      mp3_path: audioWavPath,
+      duration_sec: estimatedDuration,
+      segment_durations: segmentDurations,
+    };
   } else {
     audioResult = await synthesize(pkg, storyId);
   }
 
   // Step 3: Generate stills with Cloudflare Workers AI
   setStatus(jobId, "generating_stills");
-  await generateStills(pkg, storyId);
+  await generateStills(pkg, storyId, aspectRatio);
 
   // Step 4: Send to Vast.ai for WhisperX alignment + Remotion render + B2 upload
   setStatus(jobId, "rendering");
@@ -156,7 +174,12 @@ async function runPipeline(
   // Read stills as base64
   const segmentImages: Record<number, string> = {};
   for (const seg of pkg.segments) {
-    const stillPath = path.join("output", "stills", storyId, `${seg.index}.jpg`);
+    const stillPath = path.join(
+      "output",
+      "stills",
+      storyId,
+      `${seg.index}.jpg`,
+    );
     if (fs.existsSync(stillPath)) {
       const b64 = fs.readFileSync(stillPath).toString("base64");
       segmentImages[seg.index] = `data:image/jpeg;base64,${b64}`;
@@ -173,6 +196,7 @@ async function runPipeline(
       pkg,
       audioBase64,
       segmentImages,
+      aspectRatio,
     }),
   });
 
@@ -181,14 +205,18 @@ async function runPipeline(
     throw new Error(`Vast.ai render failed: ${err}`);
   }
 
-  const { outputUrl } = await renderRes.json() as { outputUrl: string };
+  const { outputUrl } = (await renderRes.json()) as { outputUrl: string };
 
   // Cleanup local files
-  try { fs.unlinkSync(audioResult.mp3_path); } catch {}
+  try {
+    fs.unlinkSync(audioResult.mp3_path);
+  } catch {}
   const stillsDir = path.join("output", "stills", storyId);
   if (fs.existsSync(stillsDir)) {
-    fs.readdirSync(stillsDir).forEach(f => {
-      try { fs.unlinkSync(path.join(stillsDir, f)); } catch {}
+    fs.readdirSync(stillsDir).forEach((f) => {
+      try {
+        fs.unlinkSync(path.join(stillsDir, f));
+      } catch {}
     });
   }
 

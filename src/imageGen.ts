@@ -19,6 +19,7 @@ export async function generateStill(
 
   const width  = aspectRatio === "16:9" ? 1216 : 832;
   const height = aspectRatio === "16:9" ? 832  : 1216;
+  console.log(`[imageGen] DEBUG: aspectRatio="${aspectRatio}" → ${width}x${height}`);
 
   const res = await fetch(
     `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/${MODEL}`,

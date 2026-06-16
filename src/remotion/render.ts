@@ -29,6 +29,7 @@ export async function renderVideo(
 ): Promise<string> {
   const compWidth  = aspectRatio === "16:9" ? 1920 : 1080;
   const compHeight = aspectRatio === "16:9" ? 1080 : 1920;
+  console.log(`[remotion] DEBUG: aspectRatio="${aspectRatio}" → composition ${compWidth}x${compHeight}`);
 
   console.log("\n[remotion] Starting render...");
 

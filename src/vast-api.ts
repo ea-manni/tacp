@@ -53,7 +53,8 @@ app.post("/render", async (req, res) => {
       audioPath,
       alignmentResult.totalDuration,
       alignmentResult.segmentDurations,
-      segmentImages ?? {}
+      segmentImages ?? {},
+      aspectRatio ?? "9:16"
     );
     console.log(`[${jobId}] Render complete: ${videoPath}`);
 
