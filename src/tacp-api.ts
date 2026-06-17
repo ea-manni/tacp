@@ -11,6 +11,8 @@ import { generatePackage } from "./claude/generate-package.js";
 import { synthesize } from "./tts/synthesize.js";
 import { generateStills } from "./stills/generate-stills.js";
 import "dotenv/config";
+import { setGlobalDispatcher, Agent } from "undici";
+setGlobalDispatcher(new Agent({ headersTimeout: 1800000, bodyTimeout: 1800000 }));
 
 const app = express();
 app.use(cors());
@@ -220,8 +222,6 @@ async function runPipeline(
   console.log(`[${jobId}] Calling VAST_RENDER_URL: ${VAST_RENDER_URL}/render`);
   let renderRes: Response;
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 1800000); // 30 min
     renderRes = await fetch(`${VAST_RENDER_URL}/render`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -233,10 +233,8 @@ async function runPipeline(
         segmentImages,
         aspectRatio,
       }),
-      signal: controller.signal,
     });
-    clearTimeout(timeoutId);
-    
+
   } catch (fetchErr: any) {
     console.error(`[${jobId}] Fetch to Vast.ai threw:`, fetchErr.message, "| cause:", fetchErr.cause);
     throw fetchErr;
