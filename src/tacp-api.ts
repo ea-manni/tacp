@@ -220,6 +220,8 @@ async function runPipeline(
   console.log(`[${jobId}] Calling VAST_RENDER_URL: ${VAST_RENDER_URL}/render`);
   let renderRes: Response;
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1800000); // 30 min
     renderRes = await fetch(`${VAST_RENDER_URL}/render`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -231,9 +233,10 @@ async function runPipeline(
         segmentImages,
         aspectRatio,
       }),
-      // @ts-expect-error - dispatcher option exists at runtime via undici, not in fetch's TS types
-      dispatcher: new (require("undici").Agent)({ headersTimeout: 1800000, bodyTimeout: 1800000 }),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
+    
   } catch (fetchErr: any) {
     console.error(`[${jobId}] Fetch to Vast.ai threw:`, fetchErr.message, "| cause:", fetchErr.cause);
     throw fetchErr;
