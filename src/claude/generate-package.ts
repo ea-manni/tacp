@@ -43,7 +43,12 @@ export async function generatePackage(
       4,
       Math.round(((narrationWordCount / 140) * 60) / 9),
     );
-    const maxTokens = Math.min(16000, Math.max(4096, estimatedSegments * 350));
+    const METADATA_TOKEN_BUFFER = 2500;
+    const TOKENS_PER_SEGMENT = 280;
+    const maxTokens = Math.min(
+      16000,
+      METADATA_TOKEN_BUFFER + estimatedSegments * TOKENS_PER_SEGMENT,
+    );
 
     const message = await client.messages.create({
       model: MODEL,
@@ -82,10 +87,13 @@ export async function generatePackage(
   if (!pkg.narration?.full_text)
     throw new Error("Package missing narration.full_text");
 
-  // Save to disk
+  // Save to disk — word count suffix prevents cache collisions across different durations
   const packagesDir = path.join("output", "packages");
   fs.mkdirSync(packagesDir, { recursive: true });
-  const outputPath = path.join(packagesDir, `${pkg.story_id}.json`);
+  const outputPath = path.join(
+    packagesDir,
+    `${pkg.story_id}_w${narrationWordCount}.json`,
+  );
   fs.writeFileSync(outputPath, JSON.stringify(pkg, null, 2));
 
   console.log(`   Story ID: ${pkg.story_id}`);
