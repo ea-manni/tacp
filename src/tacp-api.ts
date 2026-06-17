@@ -12,7 +12,7 @@ import { synthesize } from "./tts/synthesize.js";
 import { generateStills } from "./stills/generate-stills.js";
 import "dotenv/config";
 import { setGlobalDispatcher, Agent } from "undici";
-setGlobalDispatcher(new Agent({ headersTimeout: 1800000, bodyTimeout: 1800000 }));
+setGlobalDispatcher(new Agent({ headersTimeout: 5400000, bodyTimeout: 5400000 }));
 
 const app = express();
 app.use(cors());
