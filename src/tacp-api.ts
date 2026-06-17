@@ -98,7 +98,7 @@ app.post("/generate", (req, res) => {
     aspectRatio ?? "9:16",
     targetWordCount ?? 117,
   ).catch((err) => {
-    console.error(`[${jobId}] Pipeline error:`, err.message);
+    console.error(`[${jobId}] Pipeline error:`, err.message, "| cause:", err.cause);
     const job = jobStore.get(jobId);
     if (job) {
       job.status = "failed";
@@ -217,18 +217,25 @@ async function runPipeline(
   }
 
   // Call Vast.ai render endpoint
-  const renderRes = await fetch(`${VAST_RENDER_URL}/render`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jobId,
-      storyId,
-      pkg,
-      audioBase64,
-      segmentImages,
-      aspectRatio,
-    }),
-  });
+  console.log(`[${jobId}] Calling VAST_RENDER_URL: ${VAST_RENDER_URL}/render`);
+  let renderRes: Response;
+  try {
+    renderRes = await fetch(`${VAST_RENDER_URL}/render`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jobId,
+        storyId,
+        pkg,
+        audioBase64,
+        segmentImages,
+        aspectRatio,
+      }),
+    });
+  } catch (fetchErr: any) {
+    console.error(`[${jobId}] Fetch to Vast.ai threw:`, fetchErr.message, "| cause:", fetchErr.cause);
+    throw fetchErr;
+  }
 
   if (!renderRes.ok) {
     const err = await renderRes.text();
