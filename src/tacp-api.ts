@@ -231,6 +231,8 @@ async function runPipeline(
         segmentImages,
         aspectRatio,
       }),
+      // @ts-expect-error - dispatcher option exists at runtime via undici, not in fetch's TS types
+      dispatcher: new (require("undici").Agent)({ headersTimeout: 1800000, bodyTimeout: 1800000 }),
     });
   } catch (fetchErr: any) {
     console.error(`[${jobId}] Fetch to Vast.ai threw:`, fetchErr.message, "| cause:", fetchErr.cause);
