@@ -9,8 +9,6 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Use Sonnet for reliability on complex JSON schemas.
-// Swap to claude-haiku-4-5-20251001 if speed/cost is priority.
 const MODEL = "claude-sonnet-4-5";
 
 export async function generatePackage(
@@ -21,6 +19,7 @@ export async function generatePackage(
   const narrationWordCount = customNarration
     ? customNarration.trim().split(/\s+/).length
     : targetWordCount;
+
   const systemPrompt = customNarration
     ? buildCustomStoryPrompt(narrationWordCount)
     : buildMasterPrompt(targetWordCount);
@@ -35,24 +34,14 @@ export async function generatePackage(
 
   console.log(`\n${mode}`);
   console.log(`   Model: ${MODEL}`);
+  console.log(`   Target words: ${narrationWordCount}`);
 
   let raw: string;
 
   try {
-    const estimatedSegments = Math.max(
-      4,
-      Math.round(((narrationWordCount / 140) * 60) / 9),
-    );
-    const METADATA_TOKEN_BUFFER = 2500;
-    const TOKENS_PER_SEGMENT = 280;
-    const maxTokens = Math.min(
-      16000,
-      METADATA_TOKEN_BUFFER + estimatedSegments * TOKENS_PER_SEGMENT,
-    );
-
     const message = await client.messages.create({
       model: MODEL,
-      max_tokens: maxTokens,
+      max_tokens: 16000,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }],
     });
@@ -76,16 +65,13 @@ export async function generatePackage(
   } catch {
     console.error("[Claude] Raw output that failed to parse:");
     console.error(cleaned.slice(0, 500));
-    throw new Error(
-      "Claude returned invalid JSON — check the raw output above.",
-    );
+    throw new Error("Claude returned invalid JSON — check the raw output above.");
   }
 
   // Validate required fields
   if (!pkg.story_id) throw new Error("Package missing story_id");
   if (!pkg.segments?.length) throw new Error("Package missing segments");
-  if (!pkg.narration?.full_text)
-    throw new Error("Package missing narration.full_text");
+  if (!pkg.narration?.full_text) throw new Error("Package missing narration.full_text");
 
   // Save to disk — word count suffix prevents cache collisions across different durations
   const packagesDir = path.join("output", "packages");
