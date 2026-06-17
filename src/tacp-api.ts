@@ -37,6 +37,22 @@ interface Job {
   error?: string;
   startedAt: Date;
   completedAt?: Date;
+  meta?: {
+    title_options: string[];
+    thumbnail_prompt: string;
+    description: string;
+    tags: string[];
+    hashtags: string[];
+    chapters: { time: string; label: string }[];
+    pinned_comment: string;
+    captions: {
+      youtube_shorts: string;
+      tiktok: string;
+      instagram: string;
+      twitter: string;
+    };
+  };
+  fullNarration?: string;
 }
 
 const jobStore = new Map<string, Job>();
@@ -54,7 +70,8 @@ app.get("/health", (_req, res) => {
 });
 
 app.post("/generate", (req, res) => {
-  const { jobId, storyIdea, customNarration, aspectRatio } = req.body;
+  const { jobId, storyIdea, customNarration, aspectRatio, targetWordCount } =
+    req.body;
   console.log(`[${jobId}] DEBUG: received aspectRatio = "${aspectRatio}"`);
 
   if (!jobId || !storyIdea) {
@@ -74,16 +91,20 @@ app.post("/generate", (req, res) => {
     startedAt: new Date(),
   });
 
-  runPipeline(jobId, storyIdea, customNarration, aspectRatio ?? "9:16").catch(
-    (err) => {
-      console.error(`[${jobId}] Pipeline error:`, err.message);
-      const job = jobStore.get(jobId);
-      if (job) {
-        job.status = "failed";
-        job.error = err.message;
-      }
-    },
-  );
+  runPipeline(
+    jobId,
+    storyIdea,
+    customNarration,
+    aspectRatio ?? "9:16",
+    targetWordCount ?? 117,
+  ).catch((err) => {
+    console.error(`[${jobId}] Pipeline error:`, err.message);
+    const job = jobStore.get(jobId);
+    if (job) {
+      job.status = "failed";
+      job.error = err.message;
+    }
+  });
 
   return res.status(202).json({ jobId, status: "pending" });
 });
@@ -99,6 +120,7 @@ async function runPipeline(
   storyIdea: string,
   customNarration?: string,
   aspectRatio: string = "9:16",
+  targetWordCount: number = 117,
 ): Promise<void> {
   const job = jobStore.get(jobId)!;
 
@@ -117,7 +139,12 @@ async function runPipeline(
 
   const existingPkg = fs
     .readdirSync(packagesDir)
-    .find((f) => f.endsWith(".json") && f.includes(candidateId.slice(0, 20)));
+    .find(
+      (f) =>
+        f.endsWith(".json") &&
+        f.includes(candidateId.slice(0, 20)) &&
+        f.includes(`_w${targetWordCount}`),
+    );
 
   let pkg: any;
   if (existingPkg) {
@@ -126,11 +153,13 @@ async function runPipeline(
       fs.readFileSync(path.join(packagesDir, existingPkg), "utf-8"),
     );
   } else {
-    pkg = await generatePackage(storyIdea, customNarration);
+    pkg = await generatePackage(storyIdea, customNarration, targetWordCount);
   }
 
   const storyId = pkg.story_id;
   job.storyId = storyId;
+  job.meta = pkg.meta;
+  job.fullNarration = pkg.narration?.full_text;
 
   // Step 2: Generate audio with Gemini TTS
   setStatus(jobId, "generating_audio");
