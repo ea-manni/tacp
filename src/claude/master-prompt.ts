@@ -73,7 +73,7 @@ LENGTH MATH (hard constraints):
 - Narration pace: ~140 words per minute → approximately ${targetWordCount} words total across all segments combined.
 - Generate exactly ${segmentCount} segments, indexed 0–${segmentCount - 1}.
 - ${segmentCount} segments × ~${SEGMENT_SECONDS} seconds ≈ ${estimatedSeconds} seconds.
-
+- Each segment's narration_text must be approximately ${Math.round(targetWordCount / segmentCount)} words. No more, no less. Count carefully.
 VISUAL DIRECTION (per segment):
 - video_prompt: cinematic and specific — composition, lighting, period detail, mood. ${SEGMENT_SECONDS}-second shot. No on-screen text, no logos, no copyrighted characters, no modern brands.
 - Vary visual_style (wide/close/medium/macro/aerial) and motion (static/slow_pan/zoom_in/zoom_out/tracking) — never repeat the same combination twice in a row.
