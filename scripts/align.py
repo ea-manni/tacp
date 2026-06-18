@@ -37,6 +37,7 @@ for seg in segments:
         seg_end = words[end_idx]["end"]
     else:
         seg_end = prev_end + 5.0
+    seg_end = max(seg_end, prev_end + 1.0)  # guarantee strictly monotonic
     duration = seg_end - prev_end
     segment_durations.append(max(duration, 1.0))
     prev_end = seg_end
