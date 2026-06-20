@@ -25,13 +25,26 @@ export async function renderVideo(
   _duration: number,
   segmentDurations: number[],
   preloadedImages: Record<number, string> = {},
-  aspectRatio: string = "9:16"
+  aspectRatio: string = "9:16",
+  isWatermarked: boolean = true
 ): Promise<string> {
   const compWidth  = aspectRatio === "16:9" ? 1920 : 1080;
   const compHeight = aspectRatio === "16:9" ? 1080 : 1920;
   console.log(`[remotion] DEBUG: aspectRatio="${aspectRatio}" → composition ${compWidth}x${compHeight}`);
 
   console.log("\n[remotion] Starting render...");
+
+  let watermarkSrc: string | null = null;
+  if (isWatermarked) {
+    const watermarkPath = path.resolve(process.cwd(), "public", "watermark", "eyita-logo.png");
+    if (fs.existsSync(watermarkPath)) {
+      const watermarkBuffer = fs.readFileSync(watermarkPath);
+      watermarkSrc = `data:image/png;base64,${watermarkBuffer.toString("base64")}`;
+      console.log("[remotion] Watermark loaded");
+    } else {
+      console.error(`[remotion] Watermark requested but not found at ${watermarkPath}`);
+    }
+  }
 
   // Audio as data URI (no public folder, no staticFile)
   const audioBuffer = fs.readFileSync(audioPath);
@@ -74,6 +87,7 @@ export async function renderVideo(
     segmentFrames,
     segmentImages,
     audioSrc,
+    watermarkSrc,
   };
 
   const composition = await selectComposition({

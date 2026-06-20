@@ -203,7 +203,14 @@ export interface ToledotVideoProps {
   segmentFrames: number[];
   segmentImages: Record<number, string>;
   audioSrc: string;
+  watermarkSrc?: string | null;
 }
+
+const Watermark: React.FC<{ src: string }> = ({ src }) => (
+  <div style={{ position: "absolute", bottom: 40, right: 40, opacity: 0.85, zIndex: 1000 }}>
+    <img src={src} style={{ height: 80, width: "auto" }} alt="" />
+  </div>
+);
 
 export const ToledotVideo: React.FC<ToledotVideoProps> = ({
   segments,
@@ -211,6 +218,7 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
   segmentFrames,
   segmentImages,
   audioSrc,
+  watermarkSrc,
 }) => {
   const { fps } = useVideoConfig();
 
@@ -305,6 +313,8 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
         })}
 
       <SubscribeSticker startFrame={subscribeStickerFrame} />
+
+      {watermarkSrc && <Watermark src={watermarkSrc} />}
     </AbsoluteFill>
   );
 };

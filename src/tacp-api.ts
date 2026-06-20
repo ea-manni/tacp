@@ -72,7 +72,7 @@ app.get("/health", (_req, res) => {
 });
 
 app.post("/generate", (req, res) => {
-  const { jobId, storyIdea, customNarration, aspectRatio, targetWordCount } =
+  const { jobId, storyIdea, customNarration, aspectRatio, targetWordCount, isWatermarked } =
     req.body;
   console.log(`[${jobId}] DEBUG: received aspectRatio = "${aspectRatio}"`);
 
@@ -99,6 +99,7 @@ app.post("/generate", (req, res) => {
     customNarration,
     aspectRatio ?? "9:16",
     targetWordCount ?? 117,
+    isWatermarked ?? true,
   ).catch((err) => {
     console.error(`[${jobId}] Pipeline error:`, err.message, "| cause:", err.cause);
     const job = jobStore.get(jobId);
@@ -123,6 +124,7 @@ async function runPipeline(
   customNarration?: string,
   aspectRatio: string = "9:16",
   targetWordCount: number = 117,
+  isWatermarked: boolean = true,
 ): Promise<void> {
   const job = jobStore.get(jobId)!;
 
@@ -232,6 +234,7 @@ async function runPipeline(
         audioBase64,
         segmentImages,
         aspectRatio,
+        isWatermarked,
       }),
     });
 
