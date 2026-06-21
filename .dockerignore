@@ -1,5 +1,6 @@
 node_modules
 .git
 output
-public
+public/stills
+public/audio
 *.log
