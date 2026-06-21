@@ -269,6 +269,16 @@ export const ToledotVideo: React.FC<ToledotVideoProps> = ({
     });
   });
 
+  // Enforce strictly monotonic boundaries — degenerate short segments can otherwise tie or reverse
+  for (let i = 1; i < subtitleChunks.length; i++) {
+    if (subtitleChunks[i].startFrame <= subtitleChunks[i - 1].endFrame) {
+      subtitleChunks[i].startFrame = subtitleChunks[i - 1].endFrame + 1;
+    }
+    if (subtitleChunks[i].endFrame <= subtitleChunks[i].startFrame) {
+      subtitleChunks[i].endFrame = subtitleChunks[i].startFrame + 1;
+    }
+  }
+
   const subscribeStickerFrame = Math.round(fps * 10);
 
   return (
