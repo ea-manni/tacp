@@ -1,15 +1,27 @@
 import whisperx
 import json
 import sys
+import argparse
 
-audio_path = sys.argv[1]
-segments_path = sys.argv[2]
+# Parse positional args + optional device/compute-type flags
+# Usage (GPU):  python3 align.py audio.wav segments.json
+# Usage (CPU):  python3 align.py audio.wav segments.json --device cpu --compute-type int8
+parser = argparse.ArgumentParser()
+parser.add_argument("audio_path")
+parser.add_argument("segments_path")
+parser.add_argument("--device", default="cuda")
+parser.add_argument("--compute-type", default="float16", dest="compute_type")
+args = parser.parse_args()
+
+audio_path = args.audio_path
+segments_path = args.segments_path
+device = args.device
+compute_type = args.compute_type
 
 with open(segments_path) as f:
     segments = json.load(f)
 
-device = "cuda"
-model = whisperx.load_model("base", device, compute_type="float16")
+model = whisperx.load_model("base", device, compute_type=compute_type)
 audio = whisperx.load_audio(audio_path)
 result = model.transcribe(audio)
 

@@ -1,0 +1,85 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV REMOTION_CHROME_EXECUTABLE=/usr/bin/chromium-browser
+ENV WHISPERX_PYTHON=/opt/whisperx-env/bin/python3
+
+# System deps
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    gnupg \
+    ca-certificates \
+    python3 \
+    python3-pip \
+    python3-venv \
+    ffmpeg \
+    chromium-browser \
+    fonts-liberation \
+    fonts-noto-color-emoji \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcairo2 \
+    libcups2 \
+    libdbus-1-3 \
+    libexpat1 \
+    libfontconfig1 \
+    libgbm1 \
+    libglib2.0-0 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libpango-1.0-0 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxrandr2 \
+    libxrender1 \
+    libxss1 \
+    libxtst6 \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js 20
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# WhisperX in a venv — CPU-only torch (no CUDA index, much smaller download)
+RUN python3 -m venv /opt/whisperx-env \
+    && /opt/whisperx-env/bin/pip install --upgrade pip \
+    && /opt/whisperx-env/bin/pip install \
+        torch==2.1.0 torchaudio==2.1.0 \
+    && /opt/whisperx-env/bin/pip install whisperx
+
+# Pre-download WhisperX model during build so it's never fetched at runtime
+# This eliminates the HuggingFace network dependency on cold starts
+RUN /opt/whisperx-env/bin/python3 -c "\
+import whisperx; \
+whisperx.load_model('base', 'cpu', compute_type='int8'); \
+print('WhisperX base model cached successfully')"
+
+WORKDIR /app
+
+# Install Node dependencies
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Copy source — watermark and other public assets included
+# Note: public/stills and public/audio are excluded in .dockerignore
+COPY . .
+
+# Create output directories
+RUN mkdir -p output/packages output/audio output/stills output/videos public/stills public/audio
+
+EXPOSE 3002
+ENTRYPOINT ["npx", "tsx", "src/contabo-api.ts"]

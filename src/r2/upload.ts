@@ -40,7 +40,11 @@ export async function uploadToR2(
       Bucket: bucket,
       Key: key,
       Body: body,
-      ContentType: "video/mp4",
+      ContentType: key.endsWith(".mp4")
+        ? "video/mp4"
+        : key.endsWith(".wav")
+        ? "audio/wav"
+        : "image/jpeg",
     })
   );
 

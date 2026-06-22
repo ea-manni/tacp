@@ -1,4 +1,4 @@
-// TACP HTTP API Server — v4 (Railway orchestrator + Vast.ai renderer)
+// TACP HTTP API Server — v5 (Railway orchestrator + Contabo CPU renderer)
 // POST /generate        -> starts pipeline, returns { jobId }
 // GET  /jobs/:jobId     -> polls status
 // GET  /health          -> health check
@@ -10,6 +10,7 @@ import * as path from "path";
 import { generatePackage } from "./claude/generate-package.js";
 import { synthesize } from "./tts/synthesize.js";
 import { generateStills } from "./stills/generate-stills.js";
+import { uploadToR2 } from "./r2/upload.js";
 import "dotenv/config";
 import { setGlobalDispatcher, Agent } from "undici";
 setGlobalDispatcher(new Agent({ headersTimeout: 5400000, bodyTimeout: 5400000 }));
@@ -19,7 +20,7 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
-const VAST_RENDER_URL = process.env.VAST_RENDER_URL!;
+const RENDER_URL = (process.env.CONTABO_RENDER_URL ?? process.env.VAST_RENDER_URL)!;
 
 type JobStatus =
   | "pending"
@@ -198,68 +199,59 @@ async function runPipeline(
   setStatus(jobId, "generating_stills");
   await generateStills(pkg, storyId, aspectRatio);
 
-  // Step 4: Send to Vast.ai for WhisperX alignment + Remotion render + B2 upload
+  // Step 4: Upload audio + stills to B2 — send URLs to render server, not base64
+  // This eliminates ECONNRESET on large payloads and makes the render call tiny (~2KB)
   setStatus(jobId, "rendering");
-  console.log(`[${jobId}] Sending to Vast.ai for render...`);
+  console.log(`[${jobId}] Uploading audio to B2...`);
+  const audioUrl = await uploadToR2(audioResult.mp3_path, `audio/${storyId}.wav`);
+  console.log(`[${jobId}] Audio uploaded: ${audioUrl}`);
 
-  // Read audio as base64
-  const audioBase64 = fs.readFileSync(audioResult.mp3_path).toString("base64");
-
-  // Read stills as base64
-  const segmentImages: Record<number, string> = {};
+  console.log(`[${jobId}] Uploading stills to B2...`);
+  const segmentImageUrls: Record<number, string> = {};
   for (const seg of pkg.segments) {
-    const stillPath = path.join(
-      "output",
-      "stills",
-      storyId,
-      `${seg.index}.jpg`,
-    );
+    const stillPath = path.join("output", "stills", storyId, `${seg.index}.jpg`);
     if (fs.existsSync(stillPath)) {
-      const b64 = fs.readFileSync(stillPath).toString("base64");
-      segmentImages[seg.index] = `data:image/jpeg;base64,${b64}`;
+      const url = await uploadToR2(stillPath, `stills/${storyId}/${seg.index}.jpg`);
+      segmentImageUrls[seg.index] = url;
     }
   }
+  console.log(`[${jobId}] Stills uploaded: ${Object.keys(segmentImageUrls).length} files`);
 
-  // Call Vast.ai render endpoint
-  console.log(`[${jobId}] Calling VAST_RENDER_URL: ${VAST_RENDER_URL}/render`);
+  // Step 5: Call render server with URLs only — no base64 blobs
+  console.log(`[${jobId}] Sending to render server: ${RENDER_URL}/render`);
   let renderRes: Response;
   try {
-    renderRes = await fetch(`${VAST_RENDER_URL}/render`, {
+    renderRes = await fetch(`${RENDER_URL}/render`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         jobId,
         storyId,
         pkg,
-        audioBase64,
-        segmentImages,
+        audioUrl,
+        segmentImageUrls,
         aspectRatio,
         isWatermarked,
       }),
     });
-
   } catch (fetchErr: any) {
-    console.error(`[${jobId}] Fetch to Vast.ai threw:`, fetchErr.message, "| cause:", fetchErr.cause);
+    console.error(`[${jobId}] Fetch to render server threw:`, fetchErr.message, "| cause:", fetchErr.cause);
     throw fetchErr;
   }
 
   if (!renderRes.ok) {
     const err = await renderRes.text();
-    throw new Error(`Vast.ai render failed: ${err}`);
+    throw new Error(`Render server failed: ${err}`);
   }
 
   const { outputUrl } = (await renderRes.json()) as { outputUrl: string };
 
-  // Cleanup local files
-  try {
-    fs.unlinkSync(audioResult.mp3_path);
-  } catch {}
+  // Cleanup local files (already uploaded to B2)
+  try { fs.unlinkSync(audioResult.mp3_path); } catch {}
   const stillsDir = path.join("output", "stills", storyId);
   if (fs.existsSync(stillsDir)) {
     fs.readdirSync(stillsDir).forEach((f) => {
-      try {
-        fs.unlinkSync(path.join(stillsDir, f));
-      } catch {}
+      try { fs.unlinkSync(path.join(stillsDir, f)); } catch {}
     });
   }
 
