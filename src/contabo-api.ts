@@ -96,7 +96,7 @@ app.post("/render", async (req, res) => {
       fs.readdirSync(stillsDir).forEach((f) => fs.unlinkSync(path.join(stillsDir, f)));
     } catch {}
 
-    return res.json({ outputUrl });
+    return res.json({ outputUrl, durationSec: alignmentResult.totalDuration });
   } catch (err: any) {
     console.error(`[${jobId}] Render failed:`, err.message);
     return res.status(500).json({ error: err.message });

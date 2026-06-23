@@ -28,6 +28,7 @@ type JobStatus =
   | "generating_audio"
   | "generating_stills"
   | "rendering"
+  | "retrying"
   | "completed"
   | "failed";
 
@@ -40,6 +41,7 @@ interface Job {
   error?: string;
   startedAt: Date;
   completedAt?: Date;
+  durationSec?: number;
   meta?: {
     title_options: string[];
     thumbnail_prompt: string;
@@ -94,17 +96,40 @@ app.post("/generate", (req, res) => {
     startedAt: new Date(),
   });
 
-  runPipeline(
-    jobId,
-    storyIdea,
-    customNarration,
-    aspectRatio ?? "9:16",
-    targetWordCount ?? 117,
-    isWatermarked ?? true,
-  ).catch((err) => {
+  const doRun = () =>
+    runPipeline(
+      jobId,
+      storyIdea,
+      customNarration,
+      aspectRatio ?? "9:16",
+      targetWordCount ?? 117,
+      isWatermarked ?? true,
+    );
+
+  doRun().catch(async (err) => {
     console.error(`[${jobId}] Pipeline error:`, err.message, "| cause:", err.cause);
     const job = jobStore.get(jobId);
-    if (job) {
+    if (!job) return;
+
+    const isTransient =
+      err.message?.includes("fetch failed") ||
+      err.message?.includes("ECONNRESET") ||
+      err.message?.includes("ETIMEDOUT");
+
+    if (isTransient) {
+      console.log(`[${jobId}] Transient error — retrying in 10s`);
+      job.status = "retrying";
+      job.error = undefined;
+      await new Promise<void>((r) => setTimeout(r, 10_000));
+      doRun().catch((retryErr) => {
+        console.error(`[${jobId}] Retry failed:`, retryErr.message);
+        const j = jobStore.get(jobId);
+        if (j) {
+          j.status = "failed";
+          j.error = retryErr.message;
+        }
+      });
+    } else {
       job.status = "failed";
       job.error = err.message;
     }
@@ -244,7 +269,7 @@ async function runPipeline(
     throw new Error(`Render server failed: ${err}`);
   }
 
-  const { outputUrl } = (await renderRes.json()) as { outputUrl: string };
+  const { outputUrl, durationSec } = (await renderRes.json()) as { outputUrl: string; durationSec?: number };
 
   // Cleanup local files (already uploaded to B2)
   try { fs.unlinkSync(audioResult.mp3_path); } catch {}
@@ -258,6 +283,7 @@ async function runPipeline(
   job.status = "completed";
   job.videoPath = outputUrl;
   job.completedAt = new Date();
+  if (durationSec != null) job.durationSec = durationSec;
 
   console.log(`[${jobId}] Done: ${outputUrl}`);
 }
