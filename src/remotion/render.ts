@@ -105,6 +105,7 @@ export async function renderVideo(
     codec: "h264",
     outputLocation: outputPath,
     inputProps,
+    concurrency: 4,
     chromiumOptions: { disableWebSecurity: true, ignoreCertificateErrors: true },
     timeoutInMilliseconds: 120000,
     onProgress: ({ progress }) => {
