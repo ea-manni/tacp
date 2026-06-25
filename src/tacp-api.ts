@@ -7,6 +7,7 @@ import express from "express";
 import cors from "cors";
 import * as fs from "fs";
 import * as path from "path";
+import { Pool } from "pg";
 import { generatePackage } from "./claude/generate-package.js";
 import { synthesize } from "./tts/synthesize.js";
 import { generateStills } from "./stills/generate-stills.js";
@@ -14,6 +15,31 @@ import { uploadToR2 } from "./r2/upload.js";
 import "dotenv/config";
 import { setGlobalDispatcher, Agent } from "undici";
 setGlobalDispatcher(new Agent({ headersTimeout: 5400000, bodyTimeout: 5400000 }));
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("Missing required env var: DATABASE_URL");
+}
+
+const db = new Pool({ connectionString: process.env.DATABASE_URL });
+
+async function initDb() {
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS tacp_jobs (
+      id TEXT PRIMARY KEY,
+      status TEXT NOT NULL DEFAULT 'pending',
+      story_idea TEXT,
+      story_id TEXT,
+      video_path TEXT,
+      error TEXT,
+      meta JSONB,
+      full_narration TEXT,
+      duration_sec FLOAT,
+      started_at TIMESTAMPTZ DEFAULT NOW(),
+      completed_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+}
 
 const app = express();
 app.use(cors());
@@ -60,21 +86,36 @@ interface Job {
   fullNarration?: string;
 }
 
-const jobStore = new Map<string, Job>();
-
-function setStatus(jobId: string, status: JobStatus) {
-  const job = jobStore.get(jobId);
-  if (job) {
-    job.status = status;
-    console.log(`[${jobId}] ${status}`);
-  }
+function rowToJob(row: any): Job {
+  return {
+    id: row.id,
+    status: row.status as JobStatus,
+    storyIdea: row.story_idea,
+    storyId: row.story_id ?? undefined,
+    videoPath: row.video_path ?? undefined,
+    error: row.error ?? undefined,
+    meta: row.meta ?? undefined,
+    fullNarration: row.full_narration ?? undefined,
+    durationSec: row.duration_sec ?? undefined,
+    startedAt: row.started_at,
+    completedAt: row.completed_at ?? undefined,
+  };
 }
 
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", jobs: jobStore.size, uptime: process.uptime() });
+async function setStatus(jobId: string, status: JobStatus) {
+  await db.query(
+    `UPDATE tacp_jobs SET status = $1, updated_at = NOW() WHERE id = $2`,
+    [status, jobId],
+  );
+  console.log(`[${jobId}] ${status}`);
+}
+
+app.get("/health", async (_req, res) => {
+  const { rows } = await db.query(`SELECT COUNT(*) FROM tacp_jobs`);
+  res.json({ status: "ok", jobs: Number(rows[0].count), uptime: process.uptime() });
 });
 
-app.post("/generate", (req, res) => {
+app.post("/generate", async (req, res) => {
   const { jobId, storyIdea, customNarration, aspectRatio, targetWordCount, isWatermarked } =
     req.body;
   console.log(`[${jobId}] DEBUG: received aspectRatio = "${aspectRatio}"`);
@@ -83,18 +124,18 @@ app.post("/generate", (req, res) => {
     return res.status(400).json({ error: "jobId and storyIdea are required" });
   }
 
-  if (jobStore.has(jobId)) {
-    return res
-      .status(409)
-      .json({ error: "Job already exists", job: jobStore.get(jobId) });
+  const { rows: existing } = await db.query(
+    `SELECT * FROM tacp_jobs WHERE id = $1`,
+    [jobId],
+  );
+  if (existing.length > 0) {
+    return res.status(409).json({ error: "Job already exists", job: rowToJob(existing[0]) });
   }
 
-  jobStore.set(jobId, {
-    id: jobId,
-    status: "pending",
-    storyIdea,
-    startedAt: new Date(),
-  });
+  await db.query(
+    `INSERT INTO tacp_jobs (id, status, story_idea, started_at) VALUES ($1, 'pending', $2, NOW())`,
+    [jobId, storyIdea],
+  );
 
   const doRun = () =>
     runPipeline(
@@ -108,8 +149,6 @@ app.post("/generate", (req, res) => {
 
   doRun().catch(async (err) => {
     console.error(`[${jobId}] Pipeline error:`, err.message, "| cause:", err.cause);
-    const job = jobStore.get(jobId);
-    if (!job) return;
 
     const isTransient =
       err.message?.includes("fetch failed") ||
@@ -118,30 +157,33 @@ app.post("/generate", (req, res) => {
 
     if (isTransient) {
       console.log(`[${jobId}] Transient error — retrying in 10s`);
-      job.status = "retrying";
-      job.error = undefined;
+      await db.query(
+        `UPDATE tacp_jobs SET status = 'retrying', error = NULL, updated_at = NOW() WHERE id = $1`,
+        [jobId],
+      );
       await new Promise<void>((r) => setTimeout(r, 10_000));
-      doRun().catch((retryErr) => {
+      doRun().catch(async (retryErr) => {
         console.error(`[${jobId}] Retry failed:`, retryErr.message);
-        const j = jobStore.get(jobId);
-        if (j) {
-          j.status = "failed";
-          j.error = retryErr.message;
-        }
+        await db.query(
+          `UPDATE tacp_jobs SET status = 'failed', error = $1, updated_at = NOW() WHERE id = $2`,
+          [retryErr.message, jobId],
+        );
       });
     } else {
-      job.status = "failed";
-      job.error = err.message;
+      await db.query(
+        `UPDATE tacp_jobs SET status = 'failed', error = $1, updated_at = NOW() WHERE id = $2`,
+        [err.message, jobId],
+      );
     }
   });
 
   return res.status(202).json({ jobId, status: "pending" });
 });
 
-app.get("/jobs/:jobId", (req, res) => {
-  const job = jobStore.get(req.params.jobId);
-  if (!job) return res.status(404).json({ error: "Job not found" });
-  return res.json(job);
+app.get("/jobs/:jobId", async (req, res) => {
+  const { rows } = await db.query(`SELECT * FROM tacp_jobs WHERE id = $1`, [req.params.jobId]);
+  if (rows.length === 0) return res.status(404).json({ error: "Job not found" });
+  return res.json(rowToJob(rows[0]));
 });
 
 async function runPipeline(
@@ -152,12 +194,10 @@ async function runPipeline(
   targetWordCount: number = 117,
   isWatermarked: boolean = true,
 ): Promise<void> {
-  const job = jobStore.get(jobId)!;
-
   console.log(`\n[${jobId}] Starting pipeline: "${storyIdea}"`);
 
   // Step 1: Generate package with Claude
-  setStatus(jobId, "generating_package");
+  await setStatus(jobId, "generating_package");
   const packagesDir = path.join("output", "packages");
   fs.mkdirSync(packagesDir, { recursive: true });
 
@@ -179,20 +219,19 @@ async function runPipeline(
   let pkg: any;
   if (existingPkg) {
     console.log(`[${jobId}] Package exists — loading ${existingPkg}`);
-    pkg = JSON.parse(
-      fs.readFileSync(path.join(packagesDir, existingPkg), "utf-8"),
-    );
+    pkg = JSON.parse(fs.readFileSync(path.join(packagesDir, existingPkg), "utf-8"));
   } else {
     pkg = await generatePackage(storyIdea, customNarration, targetWordCount);
   }
 
   const storyId = pkg.story_id;
-  job.storyId = storyId;
-  job.meta = pkg.meta;
-  job.fullNarration = pkg.narration?.full_text;
+  await db.query(
+    `UPDATE tacp_jobs SET story_id = $1, meta = $2, full_narration = $3, updated_at = NOW() WHERE id = $4`,
+    [storyId, JSON.stringify(pkg.meta), pkg.narration?.full_text ?? null, jobId],
+  );
 
   // Step 2: Generate audio with Gemini TTS
-  setStatus(jobId, "generating_audio");
+  await setStatus(jobId, "generating_audio");
   const audioWavPath = path.join("output", "audio", `${storyId}.wav`);
 
   let audioResult: {
@@ -221,12 +260,12 @@ async function runPipeline(
   }
 
   // Step 3: Generate stills with Cloudflare Workers AI
-  setStatus(jobId, "generating_stills");
+  await setStatus(jobId, "generating_stills");
   await generateStills(pkg, storyId, aspectRatio);
 
   // Step 4: Upload audio + stills to B2 — send URLs to render server, not base64
   // This eliminates ECONNRESET on large payloads and makes the render call tiny (~2KB)
-  setStatus(jobId, "rendering");
+  await setStatus(jobId, "rendering");
   console.log(`[${jobId}] Uploading audio to B2...`);
   const audioUrl = await uploadToR2(audioResult.mp3_path, `audio/${storyId}.wav`);
   console.log(`[${jobId}] Audio uploaded: ${audioUrl}`);
@@ -260,7 +299,12 @@ async function runPipeline(
       }),
     });
   } catch (fetchErr: any) {
-    console.error(`[${jobId}] Fetch to render server threw:`, fetchErr.message, "| cause:", fetchErr.cause);
+    console.error(
+      `[${jobId}] Fetch to render server threw:`,
+      fetchErr.message,
+      "| cause:",
+      fetchErr.cause,
+    );
     throw fetchErr;
   }
 
@@ -269,27 +313,41 @@ async function runPipeline(
     throw new Error(`Render server failed: ${err}`);
   }
 
-  const { outputUrl, durationSec } = (await renderRes.json()) as { outputUrl: string; durationSec?: number };
+  const { outputUrl, durationSec } = (await renderRes.json()) as {
+    outputUrl: string;
+    durationSec?: number;
+  };
 
   // Cleanup local files (already uploaded to B2)
-  try { fs.unlinkSync(audioResult.mp3_path); } catch {}
+  try {
+    fs.unlinkSync(audioResult.mp3_path);
+  } catch {}
   const stillsDir = path.join("output", "stills", storyId);
   if (fs.existsSync(stillsDir)) {
     fs.readdirSync(stillsDir).forEach((f) => {
-      try { fs.unlinkSync(path.join(stillsDir, f)); } catch {}
+      try {
+        fs.unlinkSync(path.join(stillsDir, f));
+      } catch {}
     });
   }
 
-  job.status = "completed";
-  job.videoPath = outputUrl;
-  job.completedAt = new Date();
-  if (durationSec != null) job.durationSec = durationSec;
+  await db.query(
+    `UPDATE tacp_jobs SET status = 'completed', video_path = $1, completed_at = NOW(), duration_sec = $2, updated_at = NOW() WHERE id = $3`,
+    [outputUrl, durationSec ?? null, jobId],
+  );
 
   console.log(`[${jobId}] Done: ${outputUrl}`);
 }
 
-app.listen(PORT, () => {
-  console.log(`TACP API running on port ${PORT}`);
-});
+initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`TACP API running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("Failed to initialize database:", err);
+    process.exit(1);
+  });
 
 export default app;
