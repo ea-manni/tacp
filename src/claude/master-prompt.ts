@@ -89,18 +89,20 @@ METADATA:
 - captions: TikTok and Instagram = 2 tight paragraphs max. YouTube Shorts = short description + CTA + hashtag block. Twitter = one concise thought.`;
 }
 
-export function buildCustomStoryPrompt(narrationWordCount: number): string {
-  const segmentCount = segmentCountFor(narrationWordCount);
+export function buildByotMetaPrompt(segments: string[], estimatedDurationSec: number): string {
+  const segmentList = segments
+    .map((s, i) => `Segment ${i}:\n${s}`)
+    .join("\n\n");
 
   return `You are the lead producer for Toledot Stories, a faceless YouTube history channel.
 
-The creator has already written the narration. Your job is to build the full production package around it.
+The narration has already been written and split into ${segments.length} segments. Your job is to generate all production metadata and per-segment visual direction.
 
-CRITICAL RULE: The narration_text fields in each segment MUST use the exact words provided — do NOT rewrite, paraphrase, or alter the narration in any way. Split it naturally at sentence boundaries into exactly ${segmentCount} segments.
+DO NOT include narration text in your response. Only generate story_id, meta, and segment_visuals.
 
 Output JSON ONLY. No markdown, no commentary, no code fences. Begin with { and end with }. No other text.
 
-Use this exact structure:
+EXACT JSON STRUCTURE:
 {
   "story_id": "lowercase_snake_case_slug",
   "meta": {
@@ -118,16 +120,9 @@ Use this exact structure:
       "twitter": "..."
     }
   },
-  "narration": {
-    "full_text": "...",
-    "voice_id": "21m00Tcm4TlvDq8ikWAM",
-    "estimated_duration_sec": 150
-  },
-  "segments": [
+  "segment_visuals": [
     {
       "index": 0,
-      "narration_text": "...",
-      "duration_sec": ${SEGMENT_SECONDS},
       "video_prompt": "...",
       "visual_style": "wide",
       "motion": "slow_pan",
@@ -138,11 +133,19 @@ Use this exact structure:
 
 RULES:
 - story_id: derive from the story subject, lowercase snake_case only.
-- narration.full_text: exact concatenation of all segment narration_text fields in order.
-- segments: exactly ${segmentCount} objects indexed 0-${segmentCount - 1}. Split the provided narration naturally at sentence boundaries.
-- narration_text per segment: EXACT text from the provided narration — no changes.
-- video_prompt: cinematic and specific — composition, lighting, period detail, mood. No text, logos, or modern brands.
-- Vary visual_style (wide/close/medium/macro/aerial) and motion (static/slow_pan/zoom_in/zoom_out/tracking).
-- overlay field optional — only add for names, dates, places, or stats. At most once every 3 segments.
-- meta: always nested under "meta".`;
+- segment_visuals: exactly ${segments.length} objects, indexed 0–${segments.length - 1}.
+- video_prompt: cinematic and specific — composition, lighting, period detail, mood. 9-second shot. No on-screen text, no logos, no modern brands.
+- Vary visual_style (wide/close/medium/macro/aerial) and motion (static/slow_pan/zoom_in/zoom_out/tracking) — never repeat the same combination twice in a row.
+- overlay field optional per segment — only add for names, dates, places, or stats. At most once every 3 segments. Format: { "type": "name"|"date"|"place"|"stat", "text": "...", "appears_at_sec": 0–9 }
+- title_options: 5 distinct, under 70 characters, scroll-stopping.
+- thumbnail_prompt: one cinematic still capturing the story's hook.
+- description: 2–3 paragraphs — hook → context → CTA.
+- tags: ~50 SEO tags, mix of broad and specific.
+- hashtags: 8–12 platform-agnostic.
+- chapters: 4–6 markers in M:SS format based on the ~${estimatedDurationSec}s total duration.
+- pinned_comment: thought-provoking question or fact that invites reply.
+- captions: TikTok and Instagram = 2 tight paragraphs max. YouTube Shorts = short description + CTA + hashtag block. Twitter = one concise thought.
+
+NARRATION SEGMENTS (read-only — do not reproduce in your response):
+${segmentList}`;
 }
