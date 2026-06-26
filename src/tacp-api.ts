@@ -46,7 +46,15 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3001;
-const RENDER_URL = (process.env.CONTABO_RENDER_URL ?? process.env.VAST_RENDER_URL)!;
+const RENDER_URLS = [
+  process.env.CONTABO_RENDER_URL,
+  process.env.CONTABO_RENDER_URL_2,
+].filter(Boolean) as string[];
+if (RENDER_URLS.length === 0) throw new Error("Missing CONTABO_RENDER_URL");
+let renderCounter = 0;
+function nextRenderUrl(): string {
+  return RENDER_URLS[renderCounter++ % RENDER_URLS.length];
+}
 
 type JobStatus =
   | "pending"
@@ -282,10 +290,11 @@ async function runPipeline(
   console.log(`[${jobId}] Stills uploaded: ${Object.keys(segmentImageUrls).length} files`);
 
   // Step 5: Call render server with URLs only — no base64 blobs
-  console.log(`[${jobId}] Sending to render server: ${RENDER_URL}/render`);
+  const renderUrl = nextRenderUrl();
+  console.log(`[${jobId}] Sending to render server: ${renderUrl}/render`);
   let renderRes: Response;
   try {
-    renderRes = await fetch(`${RENDER_URL}/render`, {
+    renderRes = await fetch(`${renderUrl}/render`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
