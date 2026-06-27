@@ -34,11 +34,15 @@ async function initDb() {
       meta JSONB,
       full_narration TEXT,
       duration_sec FLOAT,
+      package_path TEXT,
       started_at TIMESTAMPTZ DEFAULT NOW(),
       completed_at TIMESTAMPTZ,
       updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await db.query(
+    `ALTER TABLE tacp_jobs ADD COLUMN IF NOT EXISTS package_path TEXT`,
+  );
 }
 
 const app = express();
@@ -204,32 +208,56 @@ async function runPipeline(
 ): Promise<void> {
   console.log(`\n[${jobId}] Starting pipeline: "${storyIdea}"`);
 
-  // Step 1: Generate package with Claude
-  await setStatus(jobId, "generating_package");
-  const packagesDir = path.join("output", "packages");
-  fs.mkdirSync(packagesDir, { recursive: true });
-
-  const candidateId = storyIdea
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_|_$/g, "")
-    .slice(0, 50);
-
-  const existingPkg = fs
-    .readdirSync(packagesDir)
-    .find(
-      (f) =>
-        f.endsWith(".json") &&
-        f.includes(candidateId.slice(0, 20)) &&
-        f.includes(`_w${targetWordCount}`),
-    );
+  // Step 1: Load package — DB cache → disk cache → Claude
+  const { rows: [jobRow] } = await db.query(
+    `SELECT package_path FROM tacp_jobs WHERE id = $1`,
+    [jobId],
+  );
 
   let pkg: any;
-  if (existingPkg) {
-    console.log(`[${jobId}] Package exists — loading ${existingPkg}`);
-    pkg = JSON.parse(fs.readFileSync(path.join(packagesDir, existingPkg), "utf-8"));
+
+  if (jobRow?.package_path && fs.existsSync(jobRow.package_path)) {
+    console.log(`[${jobId}] Package cached in DB — loading ${jobRow.package_path}`);
+    pkg = JSON.parse(fs.readFileSync(jobRow.package_path, "utf-8"));
   } else {
-    pkg = await generatePackage(storyIdea, customNarration, targetWordCount);
+    await setStatus(jobId, "generating_package");
+    const packagesDir = path.join("output", "packages");
+    fs.mkdirSync(packagesDir, { recursive: true });
+
+    const candidateId = storyIdea
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_|_$/g, "")
+      .slice(0, 50);
+
+    const existingPkg = fs
+      .readdirSync(packagesDir)
+      .find(
+        (f) =>
+          f.endsWith(".json") &&
+          f.includes(candidateId.slice(0, 20)) &&
+          f.includes(`_w${targetWordCount}`),
+      );
+
+    let savedPackagePath: string;
+    if (existingPkg) {
+      console.log(`[${jobId}] Package exists — loading ${existingPkg}`);
+      pkg = JSON.parse(fs.readFileSync(path.join(packagesDir, existingPkg), "utf-8"));
+      savedPackagePath = path.resolve(path.join(packagesDir, existingPkg));
+    } else {
+      pkg = await generatePackage(storyIdea, customNarration, targetWordCount);
+      const wordCount = customNarration
+        ? customNarration.trim().split(/\s+/).length
+        : targetWordCount;
+      savedPackagePath = path.resolve(
+        path.join("output", "packages", `${pkg.story_id}_w${wordCount}.json`),
+      );
+    }
+
+    await db.query(
+      `UPDATE tacp_jobs SET package_path = $1, updated_at = NOW() WHERE id = $2`,
+      [savedPackagePath, jobId],
+    );
   }
 
   const storyId = pkg.story_id;
