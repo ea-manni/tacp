@@ -14,6 +14,14 @@ import { StillShot } from "./StillShot";
 const FPS = 30;
 const AUDIO_SPEEDUP = 1.15;
 
+function monotonicInputRange(range: number[]): number[] {
+  const r = [...range].sort((a, b) => a - b);
+  for (let i = 1; i < r.length; i++) {
+    if (r[i] <= r[i - 1]) r[i] = r[i - 1] + 1;
+  }
+  return r;
+}
+
 // Subtitle
 const Subtitle: React.FC<{
   text: string;
@@ -26,7 +34,7 @@ const Subtitle: React.FC<{
 
   const opacity = interpolate(
     frame,
-    [startFrame, startFrame + 3, endFrame - 3, endFrame],
+    monotonicInputRange([startFrame, startFrame + 3, endFrame - 3, endFrame]),
     [0, 1, 1, 0],
     { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
   );
