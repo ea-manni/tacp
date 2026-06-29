@@ -22,6 +22,15 @@ if (!process.env.DATABASE_URL) {
 
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 
+class CancelledError extends Error {
+  constructor(jobId: string) {
+    super(`Job ${jobId} was cancelled`);
+    this.name = "CancelledError";
+  }
+}
+
+const cancelFlags = new Map<string, boolean>();
+
 async function initDb() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS tacp_jobs (
@@ -68,7 +77,8 @@ type JobStatus =
   | "rendering"
   | "retrying"
   | "completed"
-  | "failed";
+  | "failed"
+  | "cancelled";
 
 interface Job {
   id: string;
@@ -160,6 +170,12 @@ app.post("/generate", async (req, res) => {
     );
 
   doRun().catch(async (err) => {
+    if (err instanceof CancelledError) {
+      console.log(`[${jobId}] Pipeline stopped — job cancelled`);
+      cancelFlags.delete(jobId);
+      return;
+    }
+
     console.error(`[${jobId}] Pipeline error:`, err.message, "| cause:", err.cause);
 
     const isTransient =
@@ -196,6 +212,17 @@ app.get("/jobs/:jobId", async (req, res) => {
   const { rows } = await db.query(`SELECT * FROM tacp_jobs WHERE id = $1`, [req.params.jobId]);
   if (rows.length === 0) return res.status(404).json({ error: "Job not found" });
   return res.json(rowToJob(rows[0]));
+});
+
+app.delete("/jobs/:jobId", async (req, res) => {
+  const { jobId } = req.params;
+  cancelFlags.set(jobId, true);
+  await db.query(
+    `UPDATE tacp_jobs SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
+    [jobId],
+  );
+  console.log(`[${jobId}] Cancellation requested`);
+  return res.json({ jobId, cancelled: true });
 });
 
 async function runPipeline(
@@ -266,6 +293,8 @@ async function runPipeline(
     [storyId, JSON.stringify(pkg.meta), pkg.narration?.full_text ?? null, jobId],
   );
 
+  if (cancelFlags.get(jobId)) throw new CancelledError(jobId);
+
   // Step 2: Generate audio with Gemini TTS
   await setStatus(jobId, "generating_audio");
   const audioWavPath = path.join("output", "audio", `${storyId}.wav`);
@@ -295,9 +324,13 @@ async function runPipeline(
     audioResult = await synthesize(pkg, storyId);
   }
 
+  if (cancelFlags.get(jobId)) throw new CancelledError(jobId);
+
   // Step 3: Generate stills with Cloudflare Workers AI
   await setStatus(jobId, "generating_stills");
   await generateStills(pkg, storyId, aspectRatio);
+
+  if (cancelFlags.get(jobId)) throw new CancelledError(jobId);
 
   // Step 4: Upload audio + stills to B2 — send URLs to render server, not base64
   // This eliminates ECONNRESET on large payloads and makes the render call tiny (~2KB)
