@@ -11,6 +11,7 @@ import { Pool } from "pg";
 import { generatePackage } from "./claude/generate-package.js";
 import { synthesize } from "./tts/synthesize.js";
 import { generateStills } from "./stills/generate-stills.js";
+import { NsfwError } from "./imageGen.js";
 import { uploadToR2 } from "./r2/upload.js";
 import "dotenv/config";
 import { setGlobalDispatcher, Agent } from "undici";
@@ -225,6 +226,19 @@ app.delete("/jobs/:jobId", async (req, res) => {
   return res.json({ jobId, cancelled: true });
 });
 
+function sanitizeSegmentPrompt(prompt: string): string {
+  const stripped = prompt
+    .replace(/\b(extremely|highly|very|ultra|super|deeply|completely|totally|utterly|absolutely)\s+/gi, "")
+    .replace(/\b(graphic|explicit|violent|brutal|savage|gory|bloody|grisly|gruesome|horrifying|terrifying|disturbing|sinister|menacing|threatening|deadly|vicious|ferocious|naked|nude|bare|exposed|seductive|sensual|provocative|revealing|erotic|sexual|intimate)\s*/gi, "")
+    .replace(/\b(dramatic|intense|cinematic|hyperrealistic|photorealistic|stunning|breathtaking|epic|magnificent|spectacular|incredible|amazing|gorgeous|vivid|vibrant|harrowing|chilling|eerie|haunting|ominous|foreboding|bleak|desolate|oppressive)\s*/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/,\s*,+/g, ",")
+    .replace(/(^,\s*|\s*,\s*$)/g, "")
+    .trim();
+  // Fall back to first clause if stripping removed too much
+  return stripped.length >= 8 ? stripped : prompt.split(",")[0].trim();
+}
+
 async function runPipeline(
   jobId: string,
   storyIdea: string,
@@ -328,7 +342,18 @@ async function runPipeline(
 
   // Step 3: Generate stills with Cloudflare Workers AI
   await setStatus(jobId, "generating_stills");
-  await generateStills(pkg, storyId, aspectRatio);
+  try {
+    await generateStills(pkg, storyId, aspectRatio);
+  } catch (err: any) {
+    if (!(err instanceof NsfwError)) throw err;
+    console.log(`[${jobId}] NSFW stills fallback triggered — sanitizing prompts and retrying (package and audio reused)`);
+    for (const segment of pkg.segments) {
+      const original = segment.video_prompt;
+      segment.video_prompt = sanitizeSegmentPrompt(original);
+      console.log(`[${jobId}]   seg ${segment.index}: "${original}" → "${segment.video_prompt}"`);
+    }
+    await generateStills(pkg, storyId, aspectRatio);
+  }
 
   if (cancelFlags.get(jobId)) throw new CancelledError(jobId);
 

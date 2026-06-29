@@ -5,8 +5,11 @@ const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID!;
 const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN!;
 const MODEL = "@cf/black-forest-labs/flux-1-schnell";
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+export class NsfwError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NsfwError";
+  }
 }
 
 export async function generateStill(
@@ -38,14 +41,28 @@ export async function generateStill(
     }
   );
 
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Cloudflare AI failed ${res.status}: ${body.slice(0, 200)}`);
+  const bodyText = await res.text();
+  let json: any;
+  try {
+    json = JSON.parse(bodyText);
+  } catch {
+    throw new Error(`Cloudflare AI failed ${res.status}: ${bodyText.slice(0, 200)}`);
+  }
+
+  // Check for NSFW error (code 3030) before any other error handling
+  if (Array.isArray(json.errors)) {
+    const nsfwErr = json.errors.find((e: any) => e.code === 3030);
+    if (nsfwErr) {
+      throw new NsfwError(`Cloudflare AI NSFW (3030) on segment ${segmentIndex}: ${nsfwErr.message}`);
+    }
+  }
+
+  if (!res.ok || json.success === false) {
+    throw new Error(`Cloudflare AI failed ${res.status}: ${bodyText.slice(0, 200)}`);
   }
 
   // Response is JSON: { result: { image: "<base64>" } }
-const json = await res.json() as { result: { image: string } };
-const buffer = Buffer.from(json.result.image, "base64");
+  const buffer = Buffer.from(json.result.image, "base64");
 
   const dir = path.join("output", "stills", storyId);
   fs.mkdirSync(dir, { recursive: true });
